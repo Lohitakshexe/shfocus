@@ -1,43 +1,41 @@
 import React, { useState, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { db } from './firebase';
+import { ref, onValue, push, set, remove, update } from 'firebase/database';
 
 function GoalsComponent({ token }) {
   const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState({ text: '', type: 'daily' });
 
-  const fetchGoals = async () => {
-    try {
-      const res = await fetch(`${API_URL}/goals`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setGoals(await res.json());
-      }
-    } catch(e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
-    fetchGoals();
-    const interval = setInterval(fetchGoals, 3000);
-    return () => clearInterval(interval);
-  }, [token]);
+    const goalsRef = ref(db, 'goals');
+    const unsubscribe = onValue(goalsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const goalsList = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key]
+        })).sort((a, b) => a.created_at - b.created_at);
+        setGoals(goalsList);
+      } else {
+        setGoals([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const addGoal = async (e) => {
     e.preventDefault();
     if (!newGoal.text.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/goals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(newGoal)
+      const goalsRef = ref(db, 'goals');
+      const newGoalRef = push(goalsRef);
+      await set(newGoalRef, {
+          text: newGoal.text,
+          type: newGoal.type,
+          completed: false,
+          created_at: Date.now()
       });
-      if (res.ok) {
-        setNewGoal({ text: '', type: newGoal.type });
-        fetchGoals();
-      }
+      setNewGoal({ text: '', type: newGoal.type });
     } catch(e) {
       console.error(e);
     }
@@ -45,12 +43,8 @@ function GoalsComponent({ token }) {
 
   const toggleGoal = async (id, currentCompleted) => {
     try {
-      const res = await fetch(`${API_URL}/goals/${id}/toggle`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ completed: !currentCompleted })
-      });
-      if (res.ok) fetchGoals();
+      const goalRef = ref(db, `goals/${id}`);
+      await update(goalRef, { completed: !currentCompleted });
     } catch(e) {
       console.error(e);
     }
@@ -59,11 +53,8 @@ function GoalsComponent({ token }) {
   const clearAllGoals = async () => {
     if (!window.confirm("Are you sure you want to permanently clear ALL goals?")) return;
     try {
-      const res = await fetch(`${API_URL}/goals`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) fetchGoals();
+      const goalsRef = ref(db, 'goals');
+      await remove(goalsRef);
     } catch(e) {
       console.error(e);
     }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-function AdminDashboard({ user, token }) {
+function AdminDashboard({ user }) {
   const [bannedSites, setBannedSites] = useState([]);
   const [newSite, setNewSite] = useState('');
   const [logs, setLogs] = useState([]);
@@ -12,72 +12,97 @@ function AdminDashboard({ user, token }) {
   const [newReward, setNewReward] = useState({ name: '', cost: '', img: '/generic.png' });
   const [pointsToGive, setPointsToGive] = useState('');
 
-  const fetchRewards = async () => {
-    const res = await fetch(`${API_URL}/rewards`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    setRewards(await res.json());
-  };
-
-  const fetchBannedSites = async () => {
-    const res = await fetch(`${API_URL}/banned-sites`);
-    const data = await res.json();
-    setBannedSites(data);
-  };
-
-  const fetchLogs = async () => {
-    const res = await fetch(`${API_URL}/logs`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    setLogs(await res.json());
-  };
-
-  const fetchRedeemed = async () => {
-    const res = await fetch(`${API_URL}/rewards/redeemed`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    setRedeemed(await res.json());
-  };
-
   useEffect(() => {
-    const fetchAll = () => {
-      fetchBannedSites();
-      fetchLogs();
-      fetchRedeemed();
-      fetchRewards();
+    // Real-time listeners — no polling needed!
+    const unsubBanned = onValue(ref(db, 'banned-sites'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        setBannedSites(Object.keys(data).map(k => ({ id: k, ...data[k] })));
+      } else setBannedSites([]);
+    });
+
+    const unsubLogs = onValue(ref(db, 'logs'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }))
+                                      .sort((a, b) => b.created_at - a.created_at)
+                                      .slice(0, 50);
+        setLogs(list);
+      } else setLogs([]);
+    });
+
+    const unsubRedeemed = onValue(ref(db, 'redeemed'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }))
+                                      .sort((a, b) => b.created_at - a.created_at);
+        setRedeemed(list);
+      } else setRedeemed([]);
+    });
+
+    const unsubRewards = onValue(ref(db, 'rewards'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        setRewards(Object.keys(data).map(k => ({ id: k, ...data[k] })));
+      } else setRewards([]);
+    });
+
+    return () => {
+      unsubBanned();
+      unsubLogs();
+      unsubRedeemed();
+      unsubRewards();
     };
-    
-    fetchAll(); // Initial fetch
-    // Real-time polling every 3 seconds
-    const interval = setInterval(fetchAll, 3000);
-    return () => clearInterval(interval);
-  }, [token]);
+  }, []);
 
   const addSite = async (e) => {
     e.preventDefault();
     if (!newSite.trim()) return;
-    const res = await fetch(`${API_URL}/banned-sites`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ url: newSite })
-    });
-    if (res.ok) {
-      setNewSite('');
-      fetchBannedSites();
-    }
+    const newRef = push(ref(db, 'banned-sites'));
+    await set(newRef, { url: newSite.trim().toLowerCase() });
+    setNewSite('');
   };
 
   const removeSite = async (id) => {
-    const res = await fetch(`${API_URL}/banned-sites/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (res.ok) {
-      fetchBannedSites();
+    await remove(ref(db, `banned-sites/${id}`));
+  };
+
+  const grantCoins = async (e) => {
+    e.preventDefault();
+    const amount = parseInt(pointsToGive);
+    if (!amount || isNaN(amount) || amount <= 0) return;
+    
+    // Get all student users and update their coins
+    const usersSnap = await get(ref(db, 'users'));
+    if (usersSnap.exists()) {
+      const users = usersSnap.val();
+      const updates = {};
+      Object.keys(users).forEach(uid => {
+        if (users[uid].role === 'student') {
+          updates[`users/${uid}/coins`] = (users[uid].coins || 0) + amount;
+        }
+      });
+      await update(ref(db), updates);
     }
+    alert(`Successfully granted ${amount} Sh coins to all students!`);
+    setPointsToGive('');
+  };
+
+  const addReward = async (e) => {
+    e.preventDefault();
+    if (!newReward.name || !newReward.cost) return;
+    const newRef = push(ref(db, 'rewards'));
+    await set(newRef, { 
+      name: newReward.name, 
+      cost: parseInt(newReward.cost), 
+      img: newReward.img || '/generic.png' 
+    });
+    setNewReward({ name: '', cost: '', img: '/generic.png' });
+  };
+
+  const deleteReward = async (id, name) => {
+    if (!window.confirm(`Delete ${name}?`)) return;
+    await remove(ref(db, `rewards/${id}`));
   };
 
   return (
@@ -89,25 +114,13 @@ function AdminDashboard({ user, token }) {
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {/* Grant Coins Control */}
+          {/* Grant Coins */}
           <div className="glass-card">
             <h3>Grant Free Points</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
               Give extra 'Sh' coins to Shreeya.
             </p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!pointsToGive || isNaN(pointsToGive)) return;
-              const res = await fetch(`${API_URL}/admin/grant-coins`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ amount: parseInt(pointsToGive) })
-              });
-              if (res.ok) {
-                alert(`Successfully granted ${pointsToGive} coins to Shreeya!`);
-                setPointsToGive('');
-              }
-            }} style={{ display: 'flex', gap: '1rem' }}>
+            <form onSubmit={grantCoins} style={{ display: 'flex', gap: '1rem' }}>
               <input 
                 type="number" 
                 placeholder="Amount to grant" 
@@ -125,33 +138,17 @@ function AdminDashboard({ user, token }) {
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
               Add new rewards or delete existing ones.
             </p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if(!newReward.name || !newReward.cost) return;
-              const res = await fetch(`${API_URL}/rewards`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ name: newReward.name, cost: parseInt(newReward.cost), img: newReward.img })
-              });
-              if(res.ok) {
-                setNewReward({ name: '', cost: '', img: '/generic.png' });
-                fetchRewards();
-              }
-            }} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <form onSubmit={addReward} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
               <input type="text" placeholder="Name" value={newReward.name} onChange={e => setNewReward({...newReward, name: e.target.value})} style={{ marginBottom: 0, padding: '0.5rem' }} />
               <input type="number" placeholder="Cost" value={newReward.cost} onChange={e => setNewReward({...newReward, cost: e.target.value})} style={{ marginBottom: 0, padding: '0.5rem', width: '80px' }} />
               <button className="btn" type="submit" style={{ padding: '0.5rem 1rem' }}>Add</button>
             </form>
 
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {rewards.map(r => (
                 <div key={r.id} className="list-item" style={{ alignItems: 'center' }}>
-                  <span style={{flex: 1}}>{r.name} ({r.cost} coins)</span>
-                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#ef4444' }} onClick={async () => {
-                    if(!window.confirm(`Delete ${r.name}?`)) return;
-                    await fetch(`${API_URL}/rewards/${r.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
-                    fetchRewards();
-                  }}>Remove</button>
+                  <span style={{flex: 1}}>{r.name} ({r.cost} Sh coins)</span>
+                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#ef4444' }} onClick={() => deleteReward(r.id, r.name)}>Remove</button>
                 </div>
               ))}
             </div>
@@ -162,7 +159,7 @@ function AdminDashboard({ user, token }) {
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {/* Banned Sites Control */}
+          {/* Banned Sites */}
           <div className="glass-card">
             <h3>Banned Sites</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
@@ -196,8 +193,8 @@ function AdminDashboard({ user, token }) {
               {logs.length === 0 ? <p>No logs yet.</p> : logs.map(log => (
                 <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>{log.username}</strong>
-                    <span>{new Date(log.created_at + 'Z').toLocaleString()}</span>
+                    <strong>{log.username || log.user_id}</strong>
+                    <span>{new Date(log.created_at || Date.now()).toLocaleString()}</span>
                   </div>
                   <div>Duration: {log.duration_minutes} mins | Earned: +{log.earned_coins} Sh coins</div>
                 </div>
@@ -215,15 +212,14 @@ function AdminDashboard({ user, token }) {
         <div style={{ marginTop: '1rem', maxHeight: '200px', overflowY: 'auto' }}>
           {redeemed.length === 0 ? <p>No rewards redeemed yet.</p> : redeemed.map(r => (
             <div key={r.id} className="list-item">
-              <span><strong>{r.username}</strong> redeemed <em>{r.reward_name}</em> for {r.cost} coins.</span>
-              <span style={{ opacity: 0.6 }}>{new Date(r.timestamp + 'Z').toLocaleString()}</span>
+              <span><strong>{r.username}</strong> redeemed <em>{r.reward_name}</em> for {r.cost} Sh coins.</span>
+              <span style={{ opacity: 0.6 }}>{new Date(r.created_at || Date.now()).toLocaleString()}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Shared Goals Module */}
-      <GoalsComponent token={token} />
+      <GoalsComponent />
     </div>
   );
 }

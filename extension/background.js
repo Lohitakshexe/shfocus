@@ -1,16 +1,24 @@
+// Firebase Realtime Database REST endpoint for banned sites
+// No server needed — directly reads from Firebase!
+const FIREBASE_URL = "https://sh-backend-a0f3c-default-rtdb.asia-southeast1.firebasedatabase.app";
+
 let bannedSites = [];
 
 const fetchBannedSites = async () => {
   try {
-    const res = await fetch('https://shfocus-backend.onrender.com/banned-sites');
+    const res = await fetch(`${FIREBASE_URL}/banned-sites.json`);
     const data = await res.json();
-    bannedSites = data.map(site => site.url.toLowerCase());
+    if (data) {
+      bannedSites = Object.values(data).map(site => site.url.toLowerCase());
+    } else {
+      bannedSites = [];
+    }
   } catch (e) {
-    console.error("Failed to fetch banned sites", e);
+    console.error("Failed to fetch banned sites from Firebase", e);
   }
 };
 
-// Fetch initially and then every 30 seconds
+// Fetch initially and refresh every 30 seconds
 fetchBannedSites();
 setInterval(fetchBannedSites, 30000);
 
@@ -18,13 +26,15 @@ const checkTab = (tab) => {
   if (!tab.url) return;
   const url = tab.url.toLowerCase();
   
-  // Check if current url matches any banned site
   const isBanned = bannedSites.some(banned => url.includes(banned));
   
   if (isBanned) {
-    // We found a distraction! Find the Web App tab and notify it.
     chrome.tabs.query({}, (tabs) => {
-      const appTabs = tabs.filter(t => t.url && (t.url.includes("localhost:5173") || t.url.includes("localhost:3000")));
+      const appTabs = tabs.filter(t => t.url && (
+        t.url.includes("localhost:5173") || 
+        t.url.includes("localhost:4173") ||
+        t.url.includes("shfocus") // your future deployed domain
+      ));
       appTabs.forEach(appTab => {
         chrome.tabs.sendMessage(appTab.id, {
           action: "PAUSE_TIMER",
@@ -40,7 +50,7 @@ chrome.tabs.onActivated.addListener(activeInfo => {
   chrome.tabs.get(activeInfo.tabId, tab => checkTab(tab));
 });
 
-// Listen when URL updates in the active tab
+// Listen when URL updates in active tab
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (tab.active && changeInfo.url) {
     checkTab(tab);

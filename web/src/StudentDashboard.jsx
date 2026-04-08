@@ -1,62 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { db } from './firebase';
+import { ref, onValue, push, set, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-function StudentDashboard({ user, setUser, token }) {
-  const [coins, setCoins] = useState(user.coins);
+function StudentDashboard({ user, setUser }) {
+  const [coins, setCoins] = useState(user.coins || 0);
   const [rewards, setRewards] = useState([]);
-  const [time, setTime] = useState(0); // in seconds
+  const [time, setTime] = useState(0); 
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState([]);
   
-  // Ref to hold the current time so the extension content script can access it if needed
   const timeRef = useRef(time);
   const isRunningRef = useRef(isRunning);
 
-  useEffect(() => {
-    timeRef.current = time;
-  }, [time]);
+  useEffect(() => { timeRef.current = time; }, [time]);
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
 
   useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
-
-  const fetchLogs = () => {
-    fetch(`${API_URL}/logs`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setLogs(data));
-  };
-
-  useEffect(() => {
-    const fetchAll = () => {
-      // Fetch latest coins
-      fetch(`${API_URL}/user`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(res => res.json())
-      .then(data => {
+    // Fetch user coins dynamically
+    const userRef = ref(db, `users/${user.id}`);
+    const unsubUser = onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.coins !== undefined) {
         setCoins(data.coins);
         setUser(prev => ({ ...prev, coins: data.coins }));
-      });
+      }
+    });
 
-      // Fetch dynamic rewards
-      fetch(`${API_URL}/rewards`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(res => res.json())
-      .then(data => setRewards(data));
+    // Fetch dynamic rewards
+    const rewardsRef = ref(db, 'rewards');
+    const unsubRewards = onValue(rewardsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const rList = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setRewards(rList);
+      } else setRewards([]);
+    });
 
-      // Fetch personal logs
-      fetchLogs();
+    // Fetch personal logs
+    const logsRef = ref(db, 'logs');
+    const unsubLogs = onValue(logsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        let lList = Object.keys(data).map(k => ({ id: k, ...data[k] }))
+                                   .filter(l => l.user_id === user.id)
+                                   .sort((a,b) => b.created_at - a.created_at);
+        setLogs(lList);
+      } else {
+        setLogs([]);
+      }
+    });
+
+    return () => {
+      unsubUser();
+      unsubRewards();
+      unsubLogs();
     };
-
-    fetchAll();
-    const interval = setInterval(fetchAll, 3000);
-    return () => clearInterval(interval);
-  }, [token, setUser]);
+  }, [user.id, setUser]);
 
   // Handle Stopwatch
   useEffect(() => {
@@ -65,9 +65,8 @@ function StudentDashboard({ user, setUser, token }) {
       interval = setInterval(() => {
         setTime(prev => {
           const newTime = prev + 1;
-          // Every 5 minutes (300 seconds), log time to get coins live
           if (newTime % 300 === 0 && newTime !== 0) {
-            logTime(5); // Log 5 mins block
+            logTime(5);
           }
           return newTime;
         });
@@ -79,7 +78,6 @@ function StudentDashboard({ user, setUser, token }) {
   // Listen for extension messages
   useEffect(() => {
     const handleMessage = (event) => {
-      // The extension content script will send 'PAUSE_TIMER'
       if (event.data && event.data.type === 'PAUSE_TIMER') {
         setIsRunning(false);
         alert(`Distraction Detected: ${event.data.url} is blocked! Timer Paused.`);
@@ -89,28 +87,26 @@ function StudentDashboard({ user, setUser, token }) {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Listen for tab close to stop timer
+  // Window unload leftover logging
   useEffect(() => {
     const handleUnload = () => {
-      // If running and there is leftover time to log
       if (isRunningRef.current || timeRef.current > 0) {
         const remainingMinutes = Math.floor((timeRef.current % 300) / 60);
         if (remainingMinutes > 0) {
-          fetch(`${API_URL}/logs`, {
-            method: 'POST',
-            keepalive: true, // ensures the request fires even when tab closes
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ duration_minutes: remainingMinutes })
+          // Fire-and-forget sync to Firebase
+          const newLogRef = push(ref(db, 'logs'));
+          set(newLogRef, {
+            user_id: user.id,
+            duration_minutes: remainingMinutes,
+            earned_coins: 0,
+            created_at: Date.now()
           });
         }
       }
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [token]);
+  }, [user.id]);
 
   const formatTime = (totalSeconds) => {
     const h = Math.floor(totalSeconds / 3600);
@@ -124,7 +120,7 @@ function StudentDashboard({ user, setUser, token }) {
   const handleResume = () => setIsRunning(true);
   const handleFlag = () => {
     alert("Timer flagged for review!");
-    setIsRunning(false); // maybe just pause it
+    setIsRunning(false);
   };
   
   const handleStop = async () => {
@@ -134,24 +130,28 @@ function StudentDashboard({ user, setUser, token }) {
       await logTime(remainingMinutes);
     }
     setTime(0);
-    fetchLogs(); // refresh logs visually
   };
 
   const logTime = async (minutes) => {
     try {
-      const res = await fetch(`${API_URL}/logs`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ duration_minutes: minutes })
+      const intervals = Math.floor(minutes / 5);
+      const earned_coins = intervals * 5;
+
+      const newLogRef = push(ref(db, 'logs'));
+      await set(newLogRef, {
+        user_id: user.id,
+        duration_minutes: minutes,
+        earned_coins: earned_coins,
+        created_at: Date.now()
       });
-      const data = await res.json();
-      if (data.success && data.earned_coins > 0) {
-        setCoins(prev => prev + data.earned_coins);
-        // show a nice notification
-        new Notification("Coins Earned!", { body: `You got ${data.earned_coins} Sh coins for ${minutes} mins focus!` });
+
+      if (earned_coins > 0) {
+        const userRef = ref(db, `users/${user.id}`);
+        // Fetch current coins accurately
+        const snap = await get(userRef);
+        const currentCoins = snap.exists() ? (snap.val().coins || 0) : 0;
+        await update(userRef, { coins: currentCoins + earned_coins });
+        new Notification("Coins Earned!", { body: `You got ${earned_coins} Sh coins for ${minutes} mins focus!` });
       }
     } catch (e) {
       console.error("Failed to log time", e);
@@ -166,27 +166,32 @@ function StudentDashboard({ user, setUser, token }) {
     if (!window.confirm(`Redeem ${reward.name} for ${reward.cost} coins?`)) return;
 
     try {
-      const res = await fetch(`${API_URL}/rewards/redeem`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reward_name: reward.name, cost: reward.cost })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCoins(data.remaining_coins);
-        alert(`Successfully redeemed ${reward.name}! Lohitaksh has been notified.`);
-      } else {
-        alert(data.error);
+      const userRef = ref(db, `users/${user.id}`);
+      const snap = await get(userRef);
+      const currentCoins = snap.exists() ? (snap.val().coins || 0) : 0;
+
+      if (currentCoins < reward.cost) {
+          alert("Not enough coins! Balance changed.");
+          return;
       }
+
+      await update(userRef, { coins: currentCoins - reward.cost });
+      
+      const redeemedRef = push(ref(db, 'redeemed'));
+      await set(redeemedRef, {
+        user_id: user.id,
+        username: user.username,
+        reward_name: reward.name,
+        cost: reward.cost,
+        created_at: Date.now()
+      });
+
+      alert(`Successfully redeemed ${reward.name}! Lohitaksh has been notified.`);
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Request Notification Permission
   useEffect(() => {
     if (Notification.permission === 'default') {
       Notification.requestPermission();
@@ -195,7 +200,6 @@ function StudentDashboard({ user, setUser, token }) {
 
   return (
     <div>
-      {/* Flower & Greeting */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', marginTop: '1rem' }}>
         <img 
           src="/shflower.jpeg" 
@@ -245,7 +249,7 @@ function StudentDashboard({ user, setUser, token }) {
         {logs.length === 0 ? <p>No logs yet. Start focusing!</p> : logs.map(log => (
           <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <strong>{new Date(log.created_at + 'Z').toLocaleString()}</strong>
+              <strong>{new Date(log.created_at || Date.now()).toLocaleString()}</strong>
               <span>+{log.earned_coins} Sh coins</span>
             </div>
             <div>Focused for {log.duration_minutes} minutes</div>
@@ -253,8 +257,7 @@ function StudentDashboard({ user, setUser, token }) {
         ))}
       </div>
       
-      {/* Shared Goals Module */}
-      <GoalsComponent token={token} />
+      <GoalsComponent />
     </div>
   );
 }

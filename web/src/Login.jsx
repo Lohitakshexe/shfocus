@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { db } from './firebase';
+import { ref, get, child } from 'firebase/database';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -10,14 +10,24 @@ function Login({ onLogin }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      onLogin(data);
+      const dbRef = ref(db);
+      const snapshot = await get(child(dbRef, `users/${username.toLowerCase()}`));
+      if (snapshot.exists()) {
+        const user = snapshot.val();
+        if (user.password === password) {
+            onLogin({ 
+               id: username.toLowerCase(), 
+               username: user.username || username, 
+               role: user.role, 
+               coins: user.coins || 0 
+            });
+        } else {
+            setError('Invalid password');
+        }
+      } else {
+        // Auto-create for ease of setup if it doesn't exist? Or just fail.
+        setError('User not found. Check database.');
+      }
     } catch (err) {
       setError(err.message);
     }

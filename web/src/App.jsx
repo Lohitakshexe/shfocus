@@ -6,9 +6,8 @@ import Login from './Login';
 import './index.css';
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -21,21 +20,18 @@ function App() {
   };
 
   const handleLogin = (data) => {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify({
+    const userData = {
       id: data.id,
       username: data.username,
       role: data.role,
-      coins: data.coins
-    }));
-    setToken(data.token);
-    setUser(data);
+      coins: data.coins || 0
+    };
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setToken(null);
     setUser(null);
   };
 
@@ -59,13 +55,13 @@ function App() {
         </div>
       </nav>
 
-      {!token ? (
+      {!user ? (
         <Login onLogin={handleLogin} />
       ) : (
         user?.role === 'student' ? (
-          <StudentDashboard user={user} setUser={setUser} token={token} />
+          <StudentDashboard user={user} setUser={setUser} />
         ) : (
-          <AdminDashboard user={user} token={token} />
+          <AdminDashboard user={user} />
         )
       )}
     </div>
