@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Goals & Rewards Focus Monitor",
+  "version": "1.0",
+  "description": "Monitors tabs to pause your focus timer if you visit a banned site.",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "http://localhost:5173/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*", "http://localhost:3000/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
