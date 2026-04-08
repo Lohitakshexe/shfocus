@@ -2,7 +2,7 @@ let bannedSites = [];
 
 const fetchBannedSites = async () => {
   try {
-    const res = await fetch('http://localhost:3000/banned-sites');
+    const res = await fetch('https://shfocus-backend.onrender.com/banned-sites');
     const data = await res.json();
     bannedSites = data.map(site => site.url.toLowerCase());
   } catch (e) {
