@@ -5,7 +5,7 @@ import GoalsComponent from './GoalsComponent';
 import WeeklyGraph from './WeeklyGraph';
 import MonthCalendar from './MonthCalendar';
 
-function AdminDashboard() {
+function AdminDashboard({ user }) {
   const [bannedSites, setBannedSites] = useState([]);
   const [newSite, setNewSite] = useState('');
   const [logs, setLogs] = useState([]);
@@ -128,6 +128,11 @@ function AdminDashboard() {
       <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
         <WeeklyGraph logs={shreeyaLogs} title="Shreeya's Weekly Study Hours" />
         <MonthCalendar logs={shreeyaLogs} title="Shreeya's Study hours per day" />
+      </div>
+
+      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+        <WeeklyGraph logs={logs.filter(l => l.user_id === user?.id || l.username?.toLowerCase() === user?.username?.toLowerCase())} title="My (Lohitaksh) Weekly Study Hours" />
+        <MonthCalendar logs={logs.filter(l => l.user_id === user?.id || l.username?.toLowerCase() === user?.username?.toLowerCase())} title="My Study hours per day" />
       </div>
 
       <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 1fr', alignItems: 'start', marginTop: '2rem' }}>
