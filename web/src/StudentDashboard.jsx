@@ -9,9 +9,47 @@ function StudentDashboard({ user, setUser }) {
   const [time, setTime] = useState(0); 
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState([]);
+  const [toast, setToast] = useState(null);
+  const [statusLabel, setStatusLabel] = useState('Offline');
   
   const timeRef = useRef(time);
   const isRunningRef = useRef(isRunning);
+
+  async function awardCoins(amount) {
+    try {
+      const userRef = ref(db, `users/${user.id}`);
+      const snap = await get(userRef);
+      const currentCoins = snap.exists() ? (snap.val().coins || 0) : 0;
+      await update(userRef, { coins: currentCoins + amount });
+      
+      const msg = `You got ${amount} Sh coins for 5 mins focus!`;
+      setToast(msg);
+      setTimeout(() => setToast(null), 5000);
+
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification("Coins Earned!", { body: msg });
+      }
+    } catch (e) {
+      console.error("Failed to award coins", e);
+    }
+  }
+
+  async function recordLog(minutes) {
+    try {
+      const earned_coins = Math.floor(minutes / 5) * 5;
+
+      const newLogRef = push(ref(db, 'logs'));
+      await set(newLogRef, {
+        user_id: user.id,
+        username: user.username,
+        duration_minutes: minutes,
+        earned_coins: earned_coins,
+        created_at: Date.now()
+      });
+    } catch (e) {
+      console.error("Failed to record log", e);
+    }
+  }
 
   useEffect(() => { timeRef.current = time; }, [time]);
   useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
@@ -58,6 +96,19 @@ function StudentDashboard({ user, setUser }) {
     };
   }, [user.id, setUser]);
 
+  const syncStatus = (state, seconds) => {
+    setStatusLabel(state);
+    try {
+      update(ref(db, `users/${user.id}/status`), {
+        state,
+        time_minutes: Math.floor(seconds / 60),
+        updated_at: Date.now()
+      });
+    } catch (e) {
+      console.error("Failed to sync status", e);
+    }
+  };
+
   // Handle Stopwatch
   useEffect(() => {
     let interval;
@@ -65,21 +116,28 @@ function StudentDashboard({ user, setUser }) {
       interval = setInterval(() => {
         setTime(prev => {
           const newTime = prev + 1;
+          // Award coins every 5 mins (300s)
           if (newTime % 300 === 0 && newTime !== 0) {
-            logTime(5);
+            awardCoins(5);
+          }
+          // Sync to Firebase strictly every minute
+          if (newTime % 60 === 0 && newTime !== 0) {
+            syncStatus('Studying', newTime);
           }
           return newTime;
         });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, user.id]);
+
 
   // Listen for extension messages
   useEffect(() => {
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'PAUSE_TIMER') {
         setIsRunning(false);
+        syncStatus('Paused', timeRef.current);
         alert(`Distraction Detected: ${event.data.url} is blocked! Timer Paused.`);
       }
     };
@@ -90,17 +148,11 @@ function StudentDashboard({ user, setUser }) {
   // Window unload leftover logging
   useEffect(() => {
     const handleUnload = () => {
+      syncStatus('Offline', 0);
       if (isRunningRef.current || timeRef.current > 0) {
-        const remainingMinutes = Math.floor((timeRef.current % 300) / 60);
-        if (remainingMinutes > 0) {
-          // Fire-and-forget sync to Firebase
-          const newLogRef = push(ref(db, 'logs'));
-          set(newLogRef, {
-            user_id: user.id,
-            duration_minutes: remainingMinutes,
-            earned_coins: 0,
-            created_at: Date.now()
-          });
+        const totalMinutes = Math.floor(timeRef.current / 60);
+        if (totalMinutes > 0) {
+            recordLog(totalMinutes);
         }
       }
     };
@@ -115,48 +167,42 @@ function StudentDashboard({ user, setUser }) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleStart = () => setIsRunning(true);
-  const handlePause = () => setIsRunning(false);
-  const handleResume = () => setIsRunning(true);
+  const handleStart = () => {
+    if (window.Notification && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    setIsRunning(true);
+    syncStatus('Studying', time);
+  };
+  const handlePause = () => {
+    setIsRunning(false);
+    syncStatus('Paused', time);
+  };
+  const handleResume = () => {
+    setIsRunning(true);
+    syncStatus('Studying', time);
+  };
   const handleFlag = () => {
     alert("Timer flagged for review!");
     setIsRunning(false);
+    syncStatus('Paused', time);
+  };
+
+  const handleBreak = () => {
+    setIsRunning(false);
+    syncStatus('On Break', time);
   };
   
   const handleStop = async () => {
     setIsRunning(false);
-    const remainingMinutes = Math.floor((time % 300) / 60);
-    if (remainingMinutes > 0) {
-      await logTime(remainingMinutes);
+    const totalMinutes = Math.floor(time / 60);
+    if (totalMinutes > 0) {
+      await recordLog(totalMinutes);
     }
+    syncStatus('Offline', 0);
     setTime(0);
   };
 
-  const logTime = async (minutes) => {
-    try {
-      const intervals = Math.floor(minutes / 5);
-      const earned_coins = intervals * 5;
-
-      const newLogRef = push(ref(db, 'logs'));
-      await set(newLogRef, {
-        user_id: user.id,
-        duration_minutes: minutes,
-        earned_coins: earned_coins,
-        created_at: Date.now()
-      });
-
-      if (earned_coins > 0) {
-        const userRef = ref(db, `users/${user.id}`);
-        // Fetch current coins accurately
-        const snap = await get(userRef);
-        const currentCoins = snap.exists() ? (snap.val().coins || 0) : 0;
-        await update(userRef, { coins: currentCoins + earned_coins });
-        new Notification("Coins Earned!", { body: `You got ${earned_coins} Sh coins for ${minutes} mins focus!` });
-      }
-    } catch (e) {
-      console.error("Failed to log time", e);
-    }
-  };
 
   const redeemReward = async (reward) => {
     if (coins < reward.cost) {
@@ -200,13 +246,22 @@ function StudentDashboard({ user, setUser }) {
 
   return (
     <div>
+      {toast && (
+        <div className="glass-card" style={{ 
+          position: 'fixed', 
+          top: '20px', 
+          right: '20px', 
+          zIndex: 1000, 
+          background: 'rgba(34, 197, 94, 0.9)', 
+          color: 'white',
+          padding: '1rem 2rem',
+          fontWeight: 'bold',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {toast}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', marginTop: '1rem' }}>
-        <img 
-          src="/shflower.jpeg" 
-          alt="Flower" 
-          className="spin-slow" 
-          style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} 
-        />
         <h2 className="title" style={{ marginTop: '1rem', fontSize: '1.8rem', textAlign: 'center' }}>
           Heloo Beautiful!! Study time eh?!
         </h2>
@@ -214,6 +269,10 @@ function StudentDashboard({ user, setUser }) {
 
       <div className="glass-card" style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <p style={{ fontSize: '1.2rem', margin: '0' }}>Current balance: <span className="sh-coin" style={{ fontSize: '1.5rem' }}>{coins} Sh Coins</span></p>
+
+        <div style={{ marginTop: '1rem', fontSize: '1.2rem', fontWeight: 'bold', color: statusLabel === 'Studying' ? '#22c55e' : statusLabel === 'On Break' ? '#3b82f6' : statusLabel === 'Paused' ? '#eab308' : '#ef4444' }}>
+          Status: {statusLabel}
+        </div>
 
         <div className="stopwatch-display">
           {formatTime(time)}
@@ -223,6 +282,7 @@ function StudentDashboard({ user, setUser }) {
           {!isRunning && time === 0 && <button className="btn" onClick={handleStart}>Start</button>}
           {!isRunning && time > 0 && <button className="btn" onClick={handleResume}>Resume</button>}
           {isRunning && <button className="btn btn-secondary" onClick={handlePause}>Pause</button>}
+          {!isRunning && time > 0 && statusLabel !== 'On Break' && <button className="btn" style={{background: '#3b82f6'}} onClick={handleBreak}>Take Break</button>}
           {time > 0 && <button className="btn" style={{background: '#ef4444'}} onClick={handleStop}>Stop</button>}
           {time > 0 && <button className="btn btn-secondary" onClick={handleFlag}>Flag</button>}
         </div>
@@ -232,7 +292,7 @@ function StudentDashboard({ user, setUser }) {
       <div className="rewards-grid">
         {rewards.map(r => (
           <div className="glass-card reward-card" key={r.id}>
-            <img src={r.img || '/generic.png'} alt={r.name} />
+            <img src={r.img ? (import.meta.env.BASE_URL + r.img) : (import.meta.env.BASE_URL + 'generic.png')} alt={r.name} />
             <h4>{r.name}</h4>
             <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', alignItems: 'stretch' }}>
               <span className="sh-coin">{r.cost} Sh coins</span>
@@ -249,7 +309,7 @@ function StudentDashboard({ user, setUser }) {
         {logs.length === 0 ? <p>No logs yet. Start focusing!</p> : logs.map(log => (
           <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <strong>{new Date(log.created_at || Date.now()).toLocaleString()}</strong>
+              <strong>{new Date(log.created_at || 0).toLocaleString()}</strong>
               <span>+{log.earned_coins} Sh coins</span>
             </div>
             <div>Focused for {log.duration_minutes} minutes</div>

@@ -3,14 +3,15 @@ import { db } from './firebase';
 import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
 
-function AdminDashboard({ user }) {
+function AdminDashboard() {
   const [bannedSites, setBannedSites] = useState([]);
   const [newSite, setNewSite] = useState('');
   const [logs, setLogs] = useState([]);
   const [redeemed, setRedeemed] = useState([]);
   const [rewards, setRewards] = useState([]);
-  const [newReward, setNewReward] = useState({ name: '', cost: '', img: '/generic.png' });
+  const [newReward, setNewReward] = useState({ name: '', cost: '', img: 'generic.png' });
   const [pointsToGive, setPointsToGive] = useState('');
+  const [studentsStatus, setStudentsStatus] = useState([]);
 
   useEffect(() => {
     // Real-time listeners — no polling needed!
@@ -47,11 +48,22 @@ function AdminDashboard({ user }) {
       } else setRewards([]);
     });
 
+    const unsubUsers = onValue(ref(db, 'users'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        const studentList = Object.keys(data)
+          .filter(k => data[k].role === 'student')
+          .map(k => ({ id: k, ...data[k] }));
+        setStudentsStatus(studentList);
+      } else setStudentsStatus([]);
+    });
+
     return () => {
       unsubBanned();
       unsubLogs();
       unsubRedeemed();
       unsubRewards();
+      unsubUsers();
     };
   }, []);
 
@@ -95,9 +107,9 @@ function AdminDashboard({ user }) {
     await set(newRef, { 
       name: newReward.name, 
       cost: parseInt(newReward.cost), 
-      img: newReward.img || '/generic.png' 
+      img: newReward.img || 'generic.png' 
     });
-    setNewReward({ name: '', cost: '', img: '/generic.png' });
+    setNewReward({ name: '', cost: '', img: 'generic.png' });
   };
 
   const deleteReward = async (id, name) => {
@@ -114,6 +126,41 @@ function AdminDashboard({ user }) {
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
+          {/* Live Student Status */}
+          <div className="glass-card">
+            <h3>Live Student Tracker</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
+              Real-time focus status of students.
+            </p>
+            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {studentsStatus.length === 0 ? <p>No students found.</p> : studentsStatus.map(student => {
+                const s = student.status || { state: 'Offline', time_minutes: 0 };
+                let color = s.state === 'Studying' ? '#22c55e' : s.state === 'On Break' ? '#3b82f6' : s.state === 'Paused' ? '#eab308' : '#ef4444';
+                return (
+                  <div key={student.id} className="list-item" style={{ flexDirection: 'column', gap: '0.3rem', borderLeft: `4px solid ${color}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '1.2rem' }}>{student.username || student.id}</strong>
+                      <span style={{ 
+                        background: color, 
+                        color: '#fff', 
+                        padding: '0.2rem 0.6rem', 
+                        borderRadius: '12px',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}>{s.state}</span>
+                    </div>
+                    {s.state !== 'Offline' && (
+                      <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '0.3rem' }}>
+                        Studying for: <strong style={{ color: 'var(--accent-color)' }}>{s.time_minutes} mins</strong>
+                        {s.updated_at && <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.5 }}>(Last synced: {new Date(s.updated_at).toLocaleTimeString()})</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Grant Coins */}
           <div className="glass-card">
             <h3>Grant Free Points</h3>
@@ -194,7 +241,7 @@ function AdminDashboard({ user }) {
                 <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <strong>{log.username || log.user_id}</strong>
-                    <span>{new Date(log.created_at || Date.now()).toLocaleString()}</span>
+                    <span>{new Date(log.created_at || 0).toLocaleString()}</span>
                   </div>
                   <div>Duration: {log.duration_minutes} mins | Earned: +{log.earned_coins} Sh coins</div>
                 </div>
@@ -213,7 +260,7 @@ function AdminDashboard({ user }) {
           {redeemed.length === 0 ? <p>No rewards redeemed yet.</p> : redeemed.map(r => (
             <div key={r.id} className="list-item">
               <span><strong>{r.username}</strong> redeemed <em>{r.reward_name}</em> for {r.cost} Sh coins.</span>
-              <span style={{ opacity: 0.6 }}>{new Date(r.created_at || Date.now()).toLocaleString()}</span>
+              <span style={{ opacity: 0.6 }}>{new Date(r.created_at || 0).toLocaleString()}</span>
             </div>
           ))}
         </div>
