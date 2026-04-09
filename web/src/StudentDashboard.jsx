@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
 import { ref, onValue, push, set, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
+import WeeklyGraph from './WeeklyGraph';
+import MonthCalendar from './MonthCalendar';
 
 function StudentDashboard({ user, setUser }) {
   const [coins, setCoins] = useState(user.coins || 0);
@@ -302,6 +304,11 @@ function StudentDashboard({ user, setUser }) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+        <WeeklyGraph logs={logs} title="My Weekly Study Hours" />
+        <MonthCalendar logs={logs} title="Study hours per day" />
       </div>
 
       <h3 className="title" style={{ fontSize: '1.8rem', marginTop: '3rem' }}>My Focus Logs</h3>

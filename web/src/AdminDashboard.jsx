@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
+import WeeklyGraph from './WeeklyGraph';
+import MonthCalendar from './MonthCalendar';
 
 function AdminDashboard() {
   const [bannedSites, setBannedSites] = useState([]);
@@ -117,11 +119,18 @@ function AdminDashboard() {
     await remove(ref(db, `rewards/${id}`));
   };
 
+  const shreeyaLogs = logs.filter(log => log.username?.toLowerCase() === 'shreeya' || log.user_id === 'shreeya');
+
   return (
     <div>
       <h2 className="title" style={{ fontSize: '2rem', marginBottom: '2rem' }}>Admin Control Panel</h2>
       
-      <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 1fr', alignItems: 'start' }}>
+      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+        <WeeklyGraph logs={shreeyaLogs} title="Shreeya's Weekly Study Hours" />
+        <MonthCalendar logs={shreeyaLogs} title="Shreeya's Study hours per day" />
+      </div>
+
+      <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 1fr', alignItems: 'start', marginTop: '2rem' }}>
         
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
