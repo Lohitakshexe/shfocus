@@ -8,15 +8,20 @@
     "storage"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
-    "http://localhost:5173/*"
+    "http://localhost:5173/*",
+    "https://lohitakshexe.github.io/shfocus/*",
+    "https://sh-backend-a0f3c-default-rtdb.asia-southeast1.firebasedatabase.app/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*", "http://localhost:3000/*"],
+      "matches": [
+        "http://localhost:5173/*", 
+        "http://127.0.0.1:5173/*", 
+        "https://lohitakshexe.github.io/shfocus/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
