@@ -14,6 +14,8 @@ function AdminDashboard({ user }) {
   const [newReward, setNewReward] = useState({ name: '', cost: '', img: 'generic.png' });
   const [pointsToGive, setPointsToGive] = useState('');
   const [studentsStatus, setStudentsStatus] = useState([]);
+  const [manualMinutes, setManualMinutes] = useState('');
+  const [targetStudentId, setTargetStudentId] = useState('');
 
   useEffect(() => {
     // Real-time listeners — no polling needed!
@@ -119,6 +121,49 @@ function AdminDashboard({ user }) {
     await remove(ref(db, `rewards/${id}`));
   };
 
+  const logManualTime = async (e) => {
+    e.preventDefault();
+    const mins = parseInt(manualMinutes);
+    if (!mins || mins <= 0 || !targetStudentId) {
+      alert("Please enter minutes and select a student.");
+      return;
+    }
+
+    try {
+      // 1. Get student info
+      const student = studentsStatus.find(s => s.id === targetStudentId);
+      if (!student) return;
+
+      // 2. Calculate coins (1 point per 5 minutes)
+      const earnedCoins = Math.floor(mins / 5);
+
+      // 3. Create log entry
+      const newLogRef = push(ref(db, 'logs'));
+      await set(newLogRef, {
+        user_id: student.id,
+        username: student.username || student.id,
+        duration_minutes: mins,
+        earned_coins: earnedCoins,
+        created_at: Date.now(),
+        type: 'manual'
+      });
+
+      // 4. Update student coins
+      if (earnedCoins > 0) {
+        const userRef = ref(db, `users/${student.id}`);
+        const snap = await get(userRef);
+        const currentCoins = snap.exists() ? (snap.val().coins || 0) : 0;
+        await update(userRef, { coins: currentCoins + earnedCoins });
+      }
+
+      alert(`Successfully logged ${mins} minutes for ${student.username || student.id}!`);
+      setManualMinutes('');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to log manual time.");
+    }
+  };
+
   const shreeyaLogs = logs.filter(log => log.username?.toLowerCase() === 'shreeya' || log.user_id === 'shreeya');
 
   return (
@@ -173,6 +218,36 @@ function AdminDashboard({ user }) {
                 );
               })}
             </div>
+          </div>
+
+          {/* Log Manual Study Time */}
+          <div className="glass-card">
+            <h3>Log Off-Timer Study Time</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
+              Record study time done offline. Rewards 1 coin per 5 mins.
+            </p>
+            <form onSubmit={logManualTime} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <select 
+                value={targetStudentId} 
+                onChange={e => setTargetStudentId(e.target.value)}
+                style={{ marginBottom: 0 }}
+              >
+                <option value="">Select Student</option>
+                {studentsStatus.map(s => (
+                  <option key={s.id} value={s.id}>{s.username || s.id}</option>
+                ))}
+              </select>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <input 
+                  type="number" 
+                  placeholder="Minutes" 
+                  value={manualMinutes} 
+                  onChange={e => setManualMinutes(e.target.value)} 
+                  style={{ marginBottom: 0, flex: 1 }}
+                />
+                <button className="btn" type="submit">Log Time</button>
+              </div>
+            </form>
           </div>
 
           {/* Grant Coins */}
