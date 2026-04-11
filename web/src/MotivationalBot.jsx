@@ -110,7 +110,7 @@ Use this data naturally in conversation. If they ask about their stats, tell the
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: getSystemPrompt() },
             ...chatHistory
