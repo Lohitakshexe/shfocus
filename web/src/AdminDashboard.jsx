@@ -16,6 +16,8 @@ function AdminDashboard({ user }) {
   const [studentsStatus, setStudentsStatus] = useState([]);
   const [manualMinutes, setManualMinutes] = useState('');
   const [targetStudentId, setTargetStudentId] = useState('');
+  const [, setTick] = useState(0);
+
 
   useEffect(() => {
     // Real-time listeners — no polling needed!
@@ -70,6 +72,13 @@ function AdminDashboard({ user }) {
       unsubUsers();
     };
   }, []);
+
+  // Update relative time every minute
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 10000); // 10s for snappier updates
+    return () => clearInterval(interval);
+  }, []);
+
 
   const addSite = async (e) => {
     e.preventDefault();
@@ -211,7 +220,11 @@ function AdminDashboard({ user }) {
                     {s.state !== 'Offline' && (
                       <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '0.3rem' }}>
                         Studying for: <strong style={{ color: 'var(--accent-color)' }}>{s.time_minutes} mins</strong>
-                        {s.updated_at && <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.5 }}>(Last synced: {new Date(s.updated_at).toLocaleTimeString()})</span>}
+                        {s.updated_at && (
+                          <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.7, fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                            ({s.state === 'Paused' ? 'Paused' : 'Active'} since {Math.floor((Date.now() - s.updated_at) / 60000)} mins ago)
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

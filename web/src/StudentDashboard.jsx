@@ -13,6 +13,9 @@ function StudentDashboard({ user, setUser }) {
   const [logs, setLogs] = useState([]);
   const [toast, setToast] = useState(null);
   const [statusLabel, setStatusLabel] = useState('Offline');
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState(Date.now());
+  const [, setTick] = useState(0); // Force re-render for time display
+
   
   const timeRef = useRef(time);
   const isRunningRef = useRef(isRunning);
@@ -100,11 +103,13 @@ function StudentDashboard({ user, setUser }) {
 
   const syncStatus = (state, seconds) => {
     setStatusLabel(state);
+    const now = Date.now();
+    setStatusUpdatedAt(now);
     try {
       update(ref(db, `users/${user.id}/status`), {
         state,
         time_minutes: Math.floor(seconds / 60),
-        updated_at: Date.now()
+        updated_at: now
       });
     } catch (e) {
       console.error("Failed to sync status", e);
@@ -146,6 +151,13 @@ function StudentDashboard({ user, setUser }) {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  // Update relative time every minute
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   // Window unload leftover logging
   useEffect(() => {
@@ -273,7 +285,11 @@ function StudentDashboard({ user, setUser }) {
         <p style={{ fontSize: '1.2rem', margin: '0' }}>Current balance: <span className="sh-coin" style={{ fontSize: '1.5rem' }}>{coins} Sh Coins</span></p>
 
         <div style={{ marginTop: '1rem', fontSize: '1.2rem', fontWeight: 'bold', color: statusLabel === 'Studying' ? '#22c55e' : statusLabel === 'On Break' ? '#3b82f6' : statusLabel === 'Paused' ? '#eab308' : '#ef4444' }}>
-          Status: {statusLabel}
+          Status: {statusLabel} {statusLabel !== 'Offline' && (
+            <span style={{ fontSize: '0.9rem', opacity: 0.7, fontWeight: 'normal', fontStyle: 'italic' }}>
+              (Since {Math.floor((Date.now() - statusUpdatedAt) / 60000)} mins ago)
+            </span>
+          )}
         </div>
 
         <div className="stopwatch-display">
