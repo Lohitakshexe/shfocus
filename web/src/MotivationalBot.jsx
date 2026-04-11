@@ -19,7 +19,7 @@ function MotivationalBot({ logs, user }) {
 
   // Fetch API Key
   useEffect(() => {
-    const unsub = onValue(ref(db, 'settings/gemini_api_key'), (snap) => {
+    const unsub = onValue(ref(db, 'settings/groq_api_key'), (snap) => {
       setApiKey(snap.val() || '');
     });
     return () => unsub();
@@ -103,54 +103,30 @@ Use this data naturally in conversation. If they ask about their stats, tell the
     setIsLoading(true);
 
     try {
-      // Map history to Gemini format
-      // Gemini expects conversations to start with 'user' and alternate.
-      let geminiContents = chatHistory.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
-
-      // Strip first message if it's the hardcoded bot greeting
-      if (geminiContents.length > 0 && geminiContents[0].role === 'model') {
-        geminiContents.shift();
-      }
-
-      // Consolidate adjacent messages to satisfy Gemini's strict alternating rule
-      const alternatingContents = [];
-      geminiContents.forEach((msg) => {
-        if (alternatingContents.length === 0) {
-          alternatingContents.push(msg);
-        } else {
-          const lastMsg = alternatingContents[alternatingContents.length - 1];
-          if (lastMsg.role === msg.role) {
-            lastMsg.parts[0].text += '\n\n' + msg.parts[0].text;
-          } else {
-            alternatingContents.push(msg);
-          }
-        }
-      });
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: getSystemPrompt() }]
-          },
-          contents: alternatingContents
+          model: "llama3-8b-8192",
+          messages: [
+            { role: "system", content: getSystemPrompt() },
+            ...chatHistory
+          ],
+          temperature: 0.7
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Gemini API Error:", errorData);
+        console.error("Groq API Error:", errorData);
         throw new Error(errorData.error?.message || `HTTP Error ${response.status}`);
       }
 
       const data = await response.json();
-      const botResponse = data.candidates[0].content.parts[0].text;
+      const botResponse = data.choices[0].message.content;
       
       setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
     } catch (err) {
