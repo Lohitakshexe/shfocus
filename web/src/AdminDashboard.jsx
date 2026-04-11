@@ -16,6 +16,8 @@ function AdminDashboard({ user }) {
   const [studentsStatus, setStudentsStatus] = useState([]);
   const [manualMinutes, setManualMinutes] = useState('');
   const [targetStudentId, setTargetStudentId] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [dbApiKey, setDbApiKey] = useState('');
   const [, setTick] = useState(0);
 
 
@@ -64,12 +66,17 @@ function AdminDashboard({ user }) {
       } else setStudentsStatus([]);
     });
 
+    const unsubSettings = onValue(ref(db, 'settings/grok_api_key'), (snap) => {
+      setDbApiKey(snap.val() || '');
+    });
+
     return () => {
       unsubBanned();
       unsubLogs();
       unsubRedeemed();
       unsubRewards();
       unsubUsers();
+      unsubSettings();
     };
   }, []);
 
@@ -170,6 +177,18 @@ function AdminDashboard({ user }) {
     } catch (err) {
       console.error(err);
       alert("Failed to log manual time.");
+    }
+  };
+
+  const updateApiKey = async (e) => {
+    e.preventDefault();
+    try {
+      await set(ref(db, 'settings/grok_api_key'), apiKey.trim());
+      setApiKey('');
+      alert("API Key updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update API Key.");
     }
   };
 
@@ -278,6 +297,26 @@ function AdminDashboard({ user }) {
                 style={{ marginBottom: 0 }}
               />
               <button className="btn" type="submit">Give Points</button>
+            </form>
+          </div>
+
+          {/* AI Bot Settings */}
+          <div className="glass-card">
+            <h3>AI Bot Settings</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
+              Set the Grok API Key for the Motivational Coach.
+              <br/>
+              <span style={{color: 'var(--accent-color)'}}>Current Key: {dbApiKey ? '••••••••' + dbApiKey.slice(-4) : 'Not Set'}</span>
+            </p>
+            <form onSubmit={updateApiKey} style={{ display: 'flex', gap: '1rem' }}>
+              <input 
+                type="password" 
+                placeholder="xai-..." 
+                value={apiKey} 
+                onChange={e => setApiKey(e.target.value)} 
+                style={{ marginBottom: 0 }}
+              />
+              <button className="btn btn-secondary" type="submit">Save</button>
             </form>
           </div>
 

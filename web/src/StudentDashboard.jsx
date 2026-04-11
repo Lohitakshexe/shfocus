@@ -4,6 +4,7 @@ import { ref, onValue, push, set, update, get } from 'firebase/database';
 import GoalsComponent from './GoalsComponent';
 import WeeklyGraph from './WeeklyGraph';
 import MonthCalendar from './MonthCalendar';
+import MotivationalBot from './MotivationalBot';
 
 function StudentDashboard({ user, setUser }) {
   const [coins, setCoins] = useState(user.coins || 0);
@@ -355,7 +356,11 @@ function StudentDashboard({ user, setUser }) {
         ))}
       </div>
       
+      
       <GoalsComponent />
+      
+      {/* Motivational Grok Bot */}
+      <MotivationalBot logs={logs} user={user} />
     </div>
   );
 }
