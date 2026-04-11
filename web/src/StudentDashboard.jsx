@@ -13,11 +13,12 @@ function StudentDashboard({ user, setUser }) {
   const [logs, setLogs] = useState([]);
   const [toast, setToast] = useState(null);
   const [statusLabel, setStatusLabel] = useState('Offline');
-  const [statusUpdatedAt, setStatusUpdatedAt] = useState(Date.now());
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState(() => Date.now());
   const [, setTick] = useState(0); // Force re-render for time display
 
   
   const timeRef = useRef(time);
+  const startTimeRef = useRef(null);
   const isRunningRef = useRef(isRunning);
 
   async function awardCoins(amount) {
@@ -120,20 +121,34 @@ function StudentDashboard({ user, setUser }) {
   useEffect(() => {
     let interval;
     if (isRunning) {
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now() - (timeRef.current * 1000);
+      }
       interval = setInterval(() => {
         setTime(prev => {
-          const newTime = prev + 1;
-          // Award coins every 5 mins (300s)
-          if (newTime % 300 === 0 && newTime !== 0) {
-            awardCoins(5);
+          const actualElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+          
+          if (actualElapsed > prev) {
+            // Award coins for EVERY 5 min boundary crossed
+            const prev5MinBlocks = Math.floor(prev / 300);
+            const new5MinBlocks = Math.floor(actualElapsed / 300);
+            if (new5MinBlocks > prev5MinBlocks) {
+              const blocksCrossed = new5MinBlocks - prev5MinBlocks;
+              awardCoins(5 * blocksCrossed);
+            }
+            
+            // Sync status for EVERY 1 min boundary crossed
+            const prev1MinBlocks = Math.floor(prev / 60);
+            const new1MinBlocks = Math.floor(actualElapsed / 60);
+            if (new1MinBlocks > prev1MinBlocks) {
+              syncStatus('Studying', actualElapsed);
+            }
           }
-          // Sync to Firebase strictly every minute
-          if (newTime % 60 === 0 && newTime !== 0) {
-            syncStatus('Studying', newTime);
-          }
-          return newTime;
+          return actualElapsed;
         });
       }, 1000);
+    } else {
+      startTimeRef.current = null;
     }
     return () => clearInterval(interval);
   }, [isRunning, user.id]);
