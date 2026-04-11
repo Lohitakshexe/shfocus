@@ -71,9 +71,9 @@ function MotivationalBot({ logs, user }) {
       
       let greeting = `YO ${user.username || user.id}! 🚀 I'm Blob, your hyper-hype Study Coach! `;
       if (stats.todayMinutes > 0) {
-        greeting += `You've already locked in for ${todayHours} hours today, bringing you to an awesome ${weekHours} hours this week! Let's build that momentum! What are we focusing on next? 🔥`;
+        greeting += `You've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. Let's keep working. What are we focusing on next? 🔥`;
       } else {
-        greeting += `I see ${weekHours} hours logged this week, but NOTHING today yet! Time to lock in and get that focus going! What's the master plan for today? ⚡`;
+        greeting += `I see ${weekHours} hours logged this week, but zero hours today. Time to stop slacking and lock in. What's the plan for today? ⚡`;
       }
 
       setTimeout(() => {
@@ -90,10 +90,10 @@ function MotivationalBot({ logs, user }) {
     const weekHours = (stats.weekMinutes / 60).toFixed(1);
     const lowestHours = stats.lowestDayMinutes !== null ? (stats.lowestDayMinutes / 60).toFixed(1) : 'N/A';
 
-    return `You are a HIGH-ENERGY, HYPER-MOTIVATIONAL study coach named Blob for a student named ${user.username || user.id}.
-Your ONLY goal is to hype them up, keep them fiercely focused, and push them to achieve greatness!
-Your personality is incredibly enthusiastic, encouraging, but aggressively demanding if they slack off (especially if daily hours drop below 1.4 hours).
-DO NOT sound like a generic or boring AI assistant. DO NOT be overly formal or informative. Use lots of exclamation marks, emojis, and energetic language! (e.g., "LET'S GO!", "YOU'VE GOT THIS!", "CRUSH IT!")
+    return `You are a motivational study coach named Blob for a student named ${user.username || user.id}.
+Your goal is to keep them focused and push them to achieve greatness.
+Your personality is supportive but STRICT. You are not a hyper cheerleader; you are here to hold them accountable. If they are doing well, offer solid encouragement. If their focus drops (especially if daily hours are below 1.4 hours) or if they make excuses, be firm, direct, and push them to get back to work without babying them.
+DO NOT sound like a generic AI assistant. Be conversational, direct, assertive, and use occasional emojis.
 Keep responses CONCISE. Maximum 2-3 short sentences. Wait for their reply.
 
 Here is their current data context:
@@ -101,7 +101,7 @@ Here is their current data context:
 - Past 7 days focus: ${weekHours} hours
 ${lowestHours !== 'N/A' ? `- Lowest focus day this week: ${lowestHours} hours (on ${stats.lowestDayStr})` : ''}
 
-Use this data naturally to motivate them. If their recent stats are low (< 1.4 hrs), give them intense "tough love" hype. If they are doing great, fiercely praise them. Let's go!`;
+Use this data naturally to guide them. If their stats are low (< 1.4 hrs), give them strict "tough love". If they are doing great, offer firm praise. Get them to study.`;
   };
 
   const sendMessage = async (e) => {
