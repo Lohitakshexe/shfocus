@@ -104,12 +104,31 @@ Use this data naturally in conversation. If they ask about their stats, tell the
 
     try {
       // Map history to Gemini format
-      // Skip the very first message if it's the hardcoded assistant greeting from useEffect, 
-      // since Gemini expects 'user' or 'model'. Actually Gemini supports 'model', so we map 'assistant' to 'model'.
-      const geminiContents = chatHistory.map(msg => ({
+      // Gemini expects conversations to start with 'user' and alternate.
+      let geminiContents = chatHistory.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }]
       }));
+
+      // Strip first message if it's the hardcoded bot greeting
+      if (geminiContents.length > 0 && geminiContents[0].role === 'model') {
+        geminiContents.shift();
+      }
+
+      // Consolidate adjacent messages to satisfy Gemini's strict alternating rule
+      const alternatingContents = [];
+      geminiContents.forEach((msg) => {
+        if (alternatingContents.length === 0) {
+          alternatingContents.push(msg);
+        } else {
+          const lastMsg = alternatingContents[alternatingContents.length - 1];
+          if (lastMsg.role === msg.role) {
+            lastMsg.parts[0].text += '\n\n' + msg.parts[0].text;
+          } else {
+            alternatingContents.push(msg);
+          }
+        }
+      });
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: "POST",
@@ -120,11 +139,13 @@ Use this data naturally in conversation. If they ask about their stats, tell the
           systemInstruction: {
             parts: [{ text: getSystemPrompt() }]
           },
-          contents: geminiContents
+          contents: alternatingContents
         })
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Gemini API Error:", errorData);
         throw new Error("Failed to communicate with Gemini API.");
       }
 
