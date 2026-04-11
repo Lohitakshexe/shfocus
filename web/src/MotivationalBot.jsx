@@ -19,7 +19,7 @@ function MotivationalBot({ logs, user }) {
 
   // Fetch API Key
   useEffect(() => {
-    const unsub = onValue(ref(db, 'settings/grok_api_key'), (snap) => {
+    const unsub = onValue(ref(db, 'settings/gemini_api_key'), (snap) => {
       setApiKey(snap.val() || '');
     });
     return () => unsub();
@@ -103,28 +103,33 @@ Use this data naturally in conversation. If they ask about their stats, tell the
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      // Map history to Gemini format
+      // Skip the very first message if it's the hardcoded assistant greeting from useEffect, 
+      // since Gemini expects 'user' or 'model'. Actually Gemini supports 'model', so we map 'assistant' to 'model'.
+      const geminiContents = chatHistory.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "grok-beta",
-          messages: [
-            { role: "system", content: getSystemPrompt() },
-            ...chatHistory
-          ],
-          temperature: 0.7
+          systemInstruction: {
+            parts: [{ text: getSystemPrompt() }]
+          },
+          contents: geminiContents
         })
       });
 
       if (!response.ok) {
-        throw new Error("Failed to communicate with Grok API.");
+        throw new Error("Failed to communicate with Gemini API.");
       }
 
       const data = await response.json();
-      const botResponse = data.choices[0].message.content;
+      const botResponse = data.candidates[0].content.parts[0].text;
       
       setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
     } catch (err) {

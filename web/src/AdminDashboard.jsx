@@ -66,7 +66,7 @@ function AdminDashboard({ user }) {
       } else setStudentsStatus([]);
     });
 
-    const unsubSettings = onValue(ref(db, 'settings/grok_api_key'), (snap) => {
+    const unsubSettings = onValue(ref(db, 'settings/gemini_api_key'), (snap) => {
       setDbApiKey(snap.val() || '');
     });
 
@@ -183,7 +183,7 @@ function AdminDashboard({ user }) {
   const updateApiKey = async (e) => {
     e.preventDefault();
     try {
-      await set(ref(db, 'settings/grok_api_key'), apiKey.trim());
+      await set(ref(db, 'settings/gemini_api_key'), apiKey.trim());
       setApiKey('');
       alert("API Key updated successfully!");
     } catch (err) {
@@ -304,14 +304,14 @@ function AdminDashboard({ user }) {
           <div className="glass-card">
             <h3>AI Bot Settings</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>
-              Set the Grok API Key for the Motivational Coach.
+              Set the Gemini API Key for the Motivational Coach.
               <br/>
               <span style={{color: 'var(--accent-color)'}}>Current Key: {dbApiKey ? '••••••••' + dbApiKey.slice(-4) : 'Not Set'}</span>
             </p>
             <form onSubmit={updateApiKey} style={{ display: 'flex', gap: '1rem' }}>
               <input 
                 type="password" 
-                placeholder="xai-..." 
+                placeholder="AIza..." 
                 value={apiKey} 
                 onChange={e => setApiKey(e.target.value)} 
                 style={{ marginBottom: 0 }}
