@@ -25,16 +25,6 @@ function MotivationalBot({ logs, user }) {
     return () => unsub();
   }, []);
 
-  // Initial Greeting when API key is ready
-  useEffect(() => {
-    if (messages.length === 0 && apiKey) {
-      // Small delay on first load to make it feel natural
-      setTimeout(() => {
-        setMessages([{ role: 'assistant', content: `Hey ${user.username || user.id}! I'm Blob, your Study Coach. How are we doing today?` }]);
-      }, 1000);
-    }
-  }, [apiKey, user.username, user.id, messages.length]);
-
   const crunchStats = () => {
     const now = new Date();
     const todayStr = now.toDateString();
@@ -60,7 +50,6 @@ function MotivationalBot({ logs, user }) {
     let lowestDayMinutes = null;
     let lowestDayStr = '';
     
-    // Only calculate lowest day if we have data for a few days
     if (Object.keys(dailyMap).length > 2) {
       Object.entries(dailyMap).forEach(([date, mins]) => {
         if (lowestDayMinutes === null || mins < lowestDayMinutes) {
@@ -73,6 +62,27 @@ function MotivationalBot({ logs, user }) {
     return { todayMinutes, weekMinutes, lowestDayMinutes, lowestDayStr };
   };
 
+  // Initial Greeting when API key is ready
+  useEffect(() => {
+    if (messages.length === 0 && apiKey) {
+      const stats = crunchStats();
+      const todayHours = (stats.todayMinutes / 60).toFixed(1);
+      const weekHours = (stats.weekMinutes / 60).toFixed(1);
+      
+      let greeting = `YO ${user.username || user.id}! 🚀 I'm Blob, your hyper-hype Study Coach! `;
+      if (stats.todayMinutes > 0) {
+        greeting += `You've already locked in for ${todayHours} hours today, bringing you to an awesome ${weekHours} hours this week! Let's build that momentum! What are we focusing on next? 🔥`;
+      } else {
+        greeting += `I see ${weekHours} hours logged this week, but NOTHING today yet! Time to lock in and get that focus going! What's the master plan for today? ⚡`;
+      }
+
+      setTimeout(() => {
+        setMessages([{ role: 'assistant', content: greeting }]);
+      }, 1000);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, user.username, user.id, messages.length]);
+
   const getSystemPrompt = () => {
     const stats = crunchStats();
     
@@ -80,16 +90,18 @@ function MotivationalBot({ logs, user }) {
     const weekHours = (stats.weekMinutes / 60).toFixed(1);
     const lowestHours = stats.lowestDayMinutes !== null ? (stats.lowestDayMinutes / 60).toFixed(1) : 'N/A';
 
-    return `You are a motivational study coach named Blob for a student named ${user.username || user.id}.
-Your personality is friendly, but you become strict and pushy if their focus drops too low (especially if daily hours drop below 1.4 hours).
-You keep your responses CONCISE, maximum 3-4 sentences. Wait for them to answer. No long essays. 
+    return `You are a HIGH-ENERGY, HYPER-MOTIVATIONAL study coach named Blob for a student named ${user.username || user.id}.
+Your ONLY goal is to hype them up, keep them fiercely focused, and push them to achieve greatness!
+Your personality is incredibly enthusiastic, encouraging, but aggressively demanding if they slack off (especially if daily hours drop below 1.4 hours).
+DO NOT sound like a generic or boring AI assistant. DO NOT be overly formal or informative. Use lots of exclamation marks, emojis, and energetic language! (e.g., "LET'S GO!", "YOU'VE GOT THIS!", "CRUSH IT!")
+Keep responses CONCISE. Maximum 2-3 short sentences. Wait for their reply.
 
-Here is their current data:
+Here is their current data context:
 - Today's focus: ${todayHours} hours
 - Past 7 days focus: ${weekHours} hours
 ${lowestHours !== 'N/A' ? `- Lowest focus day this week: ${lowestHours} hours (on ${stats.lowestDayStr})` : ''}
 
-Use this data naturally in conversation. If they ask about their stats, tell them. If their recent stats are low (< 1.4 hrs), be a strict coach to motivate them to do better. If they are doing great, praise them.`;
+Use this data naturally to motivate them. If their recent stats are low (< 1.4 hrs), give them intense "tough love" hype. If they are doing great, fiercely praise them. Let's go!`;
   };
 
   const sendMessage = async (e) => {
