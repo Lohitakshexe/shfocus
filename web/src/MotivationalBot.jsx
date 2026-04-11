@@ -30,7 +30,7 @@ function MotivationalBot({ logs, user }) {
     if (messages.length === 0 && apiKey) {
       // Small delay on first load to make it feel natural
       setTimeout(() => {
-        setMessages([{ role: 'assistant', content: `Hey ${user.username || user.id}! I'm your Study Coach. How are we doing today?` }]);
+        setMessages([{ role: 'assistant', content: `Hey ${user.username || user.id}! I'm Blob, your Study Coach. How are we doing today?` }]);
       }, 1000);
     }
   }, [apiKey, user.username, user.id, messages.length]);
@@ -80,7 +80,7 @@ function MotivationalBot({ logs, user }) {
     const weekHours = (stats.weekMinutes / 60).toFixed(1);
     const lowestHours = stats.lowestDayMinutes !== null ? (stats.lowestDayMinutes / 60).toFixed(1) : 'N/A';
 
-    return `You are a motivational study coach for a student named ${user.username || user.id}.
+    return `You are a motivational study coach named Blob for a student named ${user.username || user.id}.
 Your personality is friendly, but you become strict and pushy if their focus drops too low (especially if daily hours drop below 1.4 hours).
 You keep your responses CONCISE, maximum 3-4 sentences. Wait for them to answer. No long essays. 
 
@@ -130,7 +130,7 @@ Use this data naturally in conversation. If they ask about their stats, tell the
         }
       });
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -144,9 +144,9 @@ Use this data naturally in conversation. If they ask about their stats, tell the
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error("Gemini API Error:", errorData);
-        throw new Error("Failed to communicate with Gemini API.");
+        throw new Error(errorData.error?.message || `HTTP Error ${response.status}`);
       }
 
       const data = await response.json();
@@ -155,7 +155,7 @@ Use this data naturally in conversation. If they ask about their stats, tell the
       setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I am having trouble connecting to my brain right now! (API Key issue or network error)" }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `API Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -176,7 +176,7 @@ Use this data naturally in conversation. If they ask about their stats, tell the
       {isOpen && (
         <div className="chat-window glass-card">
           <div className="chat-header">
-            <h4>Study Coach 🚀</h4>
+            <h4>Blob 💬</h4>
             <button className="btn btn-secondary close-btn" onClick={() => setIsOpen(false)}>×</button>
           </div>
           
