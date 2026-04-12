@@ -51,10 +51,10 @@ const MonthCalendar = ({ logs, title = "This Month" }) => {
     const mins = dailyTotals[d] || 0;
     
     let bg = 'rgba(255, 255, 255, 0.05)';
-    if (mins > 0 && mins <= 30) bg = 'rgba(34, 197, 94, 0.3)';
-    else if (mins > 30 && mins <= 60) bg = 'rgba(34, 197, 94, 0.5)';
-    else if (mins > 60 && mins <= 120) bg = 'rgba(34, 197, 94, 0.8)';
-    else if (mins > 120) bg = 'rgba(34, 197, 94, 1)';
+    if (mins > 0 && mins <= 60) bg = 'rgba(34, 197, 94, 0.3)';
+    else if (mins > 60 && mins <= 150) bg = 'rgba(34, 197, 94, 0.5)';
+    else if (mins > 150 && mins <= 300) bg = 'rgba(34, 197, 94, 0.8)';
+    else if (mins > 300) bg = 'rgba(34, 197, 94, 1)';
 
     const formatHours = (m) => {
         const h = Math.floor(m / 60);
