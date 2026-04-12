@@ -8,6 +8,8 @@ function MotivationalBot({ logs, user }) {
   const [input, setInput] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [goals, setGoals] = useState([]);
+  const [goalsLoaded, setGoalsLoaded] = useState(false);
   const scrollRef = useRef(null);
 
   // Auto-scroll to bottom of chat
@@ -23,6 +25,25 @@ function MotivationalBot({ logs, user }) {
       setApiKey(snap.val() || '');
     });
     return () => unsub();
+  }, []);
+
+  // Fetch Goals
+  useEffect(() => {
+    const goalsRef = ref(db, 'goals');
+    const unsubscribe = onValue(goalsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const goalsList = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key]
+        })).sort((a, b) => (a.order !== undefined ? a.order : a.created_at) - (b.order !== undefined ? b.order : b.created_at));
+        setGoals(goalsList);
+      } else {
+        setGoals([]);
+      }
+      setGoalsLoaded(true);
+    });
+    return () => unsubscribe();
   }, []);
 
   const crunchStats = () => {
@@ -81,9 +102,26 @@ function MotivationalBot({ logs, user }) {
       
       let greeting = `Hey ${user.username || user.id}, I'm Blob, your Study Coach.\n\n${randomFact}\n\n`;
       if (stats.todayMinutes > 0) {
-        greeting += `Right now, you've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. Let's keep working. What are we focusing on next? 🔥`;
+        greeting += `Right now, you've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. `;
       } else {
-        greeting += `I see ${weekHours} hours logged this week, but zero hours today. Time to stop slacking and lock in. What's the plan for today? ⚡`;
+        greeting += `I see ${weekHours} hours logged this week, but zero hours today. `;
+      }
+
+      // Add Task logic dynamically
+      if (goals.length > 0) {
+        const pending = goals.filter(g => !g.completed);
+        const completed = goals.filter(g => g.completed);
+        if (completed.length > 0) {
+          greeting += `You've already knocked out ${completed.length} tasks, but still have ${pending.length} pending. `;
+        } else if (pending.length > 0) {
+          greeting += `You have ${pending.length} tasks completely untouched. `;
+        }
+      }
+
+      if (stats.todayMinutes > 0) {
+          greeting += `Let's keep working. What are we focusing on next? 🔥`;
+      } else {
+          greeting += `Time to stop slacking and lock in. What's the plan for today? ⚡`;
       }
 
       setTimeout(() => {
@@ -91,7 +129,7 @@ function MotivationalBot({ logs, user }) {
       }, 1000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, user.username, user.id, messages.length]);
+  }, [apiKey, user.username, user.id, messages.length, goalsLoaded]);
 
   const getSystemPrompt = () => {
     const stats = crunchStats();
@@ -99,6 +137,14 @@ function MotivationalBot({ logs, user }) {
     const todayHours = (stats.todayMinutes / 60).toFixed(1);
     const weekHours = (stats.weekMinutes / 60).toFixed(1);
     const lowestHours = stats.lowestDayMinutes !== null ? (stats.lowestDayMinutes / 60).toFixed(1) : 'N/A';
+    
+    const pendingGoals = goals.filter(g => !g.completed);
+    const completedGoals = goals.filter(g => g.completed);
+    let taskContext = '';
+    if (goals.length > 0) {
+      taskContext = `\n- Pending Tasks: ${pendingGoals.length > 0 ? pendingGoals.map(g => g.text).join(', ') : 'None!'}`;
+      taskContext += `\n- Completed Tasks: ${completedGoals.length > 0 ? completedGoals.map(g => g.text).join(', ') : 'None so far.'}`;
+    }
 
     return `You are a motivational study coach named Blob for a student named ${user.username || user.id}.
 Your goal is to keep them focused and push them to achieve greatness.
@@ -109,9 +155,9 @@ Keep responses CONCISE. Maximum 2-3 short sentences. Wait for their reply.
 Here is their current data context:
 - Today's focus: ${todayHours} hours
 - Past 7 days focus: ${weekHours} hours
-${lowestHours !== 'N/A' ? `- Lowest focus day this week: ${lowestHours} hours (on ${stats.lowestDayStr})` : ''}
+${lowestHours !== 'N/A' ? `- Lowest focus day this week: ${lowestHours} hours (on ${stats.lowestDayStr})` : ''}${taskContext}
 
-Use this data naturally to guide them. If their stats are low (< 1.4 hrs), give them strict "tough love". If they are doing great, offer firm praise. Get them to study.`;
+Use this data naturally to guide them. If their stats are low (< 1.4 hrs), give them strict "tough love". If they are doing great, offer firm praise. Reference their tasks to hold them accountable. Get them to study.`;
   };
 
   const sendMessage = async (e) => {
