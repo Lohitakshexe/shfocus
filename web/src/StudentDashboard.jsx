@@ -144,6 +144,17 @@ function StudentDashboard({ user, setUser }) {
             if (new1MinBlocks > prev1MinBlocks) {
               syncStatus('Studying', actualElapsed);
             }
+
+            // Hydration reminder EVERY 15 min boundary (900 seconds)
+            const prev15MinBlocks = Math.floor(prev / 900);
+            const new15MinBlocks = Math.floor(actualElapsed / 900);
+            if (new15MinBlocks > prev15MinBlocks) {
+              if (window.Notification && Notification.permission === 'granted') {
+                new Notification("Hydration Reminder 💧", {
+                  body: "It's been 15 minutes! Please take a quick sip of water to stay fresh and focused.",
+                });
+              }
+            }
           }
           return actualElapsed;
         });
