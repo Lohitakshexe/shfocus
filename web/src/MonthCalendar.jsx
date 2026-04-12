@@ -51,9 +51,10 @@ const MonthCalendar = ({ logs, title = "This Month" }) => {
     const mins = dailyTotals[d] || 0;
     
     let bg = 'rgba(255, 255, 255, 0.05)';
-    if (mins > 0 && mins <= 60) bg = 'rgba(34, 197, 94, 0.3)';
-    else if (mins > 60 && mins <= 150) bg = 'rgba(34, 197, 94, 0.5)';
-    else if (mins > 150 && mins <= 300) bg = 'rgba(34, 197, 94, 0.8)';
+    if (mins > 0 && mins <= 60) bg = 'rgba(34, 197, 94, 0.2)';
+    else if (mins > 60 && mins <= 120) bg = 'rgba(34, 197, 94, 0.4)';
+    else if (mins > 120 && mins <= 210) bg = 'rgba(34, 197, 94, 0.6)';
+    else if (mins > 210 && mins <= 300) bg = 'rgba(34, 197, 94, 0.8)';
     else if (mins > 300) bg = 'rgba(34, 197, 94, 1)';
 
     const formatHours = (m) => {
@@ -107,8 +108,9 @@ const MonthCalendar = ({ logs, title = "This Month" }) => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', opacity: 0.6, marginTop: '1.5rem', gap: '5px' }}>
         <span>Less</span>
         <div style={{ width: '12px', height: '12px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px' }} />
-        <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.3)', borderRadius: '3px' }} />
-        <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.5)', borderRadius: '3px' }} />
+        <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.2)', borderRadius: '3px' }} />
+        <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.4)', borderRadius: '3px' }} />
+        <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.6)', borderRadius: '3px' }} />
         <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 0.8)', borderRadius: '3px' }} />
         <div style={{ width: '12px', height: '12px', background: 'rgba(34, 197, 94, 1)', borderRadius: '3px' }} />
         <span>More</span>
