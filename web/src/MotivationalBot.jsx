@@ -69,9 +69,19 @@ function MotivationalBot({ logs, user }) {
       const todayHours = (stats.todayMinutes / 60).toFixed(1);
       const weekHours = (stats.weekMinutes / 60).toFixed(1);
       
-      let greeting = `YO ${user.username || user.id}! 🚀 I'm Blob, your hyper-hype Study Coach! `;
+      const funFacts = [
+        "Fun Fact: Your brain uses 20% of your body's energy despite being only 2% of your total weight!",
+        "Fun Fact: Learning new things rewires your brain and actually creates new physical neural pathways.",
+        "Fun Fact: Spaced repetition is scientifically proven to increase long-term memory retention by over 200%.",
+        "Fun Fact: Hydration directly affects your focus; drinking water can boost brain performance by 14%.",
+        "Fun Fact: Teaching a topic to someone else is psychologically the fastest way to truly master it.",
+        "Fun Fact: Chewing gum while studying and during a test can actually improve your memory recall!"
+      ];
+      const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
+      
+      let greeting = `Hey ${user.username || user.id}, I'm Blob, your Study Coach.\n\n${randomFact}\n\n`;
       if (stats.todayMinutes > 0) {
-        greeting += `You've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. Let's keep working. What are we focusing on next? 🔥`;
+        greeting += `Right now, you've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. Let's keep working. What are we focusing on next? 🔥`;
       } else {
         greeting += `I see ${weekHours} hours logged this week, but zero hours today. Time to stop slacking and lock in. What's the plan for today? ⚡`;
       }
