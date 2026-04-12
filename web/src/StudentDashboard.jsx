@@ -155,6 +155,17 @@ function StudentDashboard({ user, setUser }) {
                 });
               }
             }
+
+            // Pomodoro Break reminder EVERY 24 min boundary (1440 seconds)
+            const prev24MinBlocks = Math.floor(prev / 1440);
+            const new24MinBlocks = Math.floor(actualElapsed / 1440);
+            if (new24MinBlocks > prev24MinBlocks) {
+              if (window.Notification && Notification.permission === 'granted') {
+                new Notification("Pomodoro Break! 🛎️", {
+                  body: "You've been focusing for roughly 25 minutes. Take a 5-minute break to rest your eyes and stretch!",
+                });
+              }
+            }
           }
           return actualElapsed;
         });

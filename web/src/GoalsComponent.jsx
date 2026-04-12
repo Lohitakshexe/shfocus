@@ -5,6 +5,7 @@ import { ref, onValue, push, set, remove, update } from 'firebase/database';
 function GoalsComponent({ token }) {
   const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState({ text: '', type: 'daily' });
+  const [draggedGoal, setDraggedGoal] = useState(null);
 
   useEffect(() => {
     const goalsRef = ref(db, 'goals');
@@ -14,7 +15,11 @@ function GoalsComponent({ token }) {
         const goalsList = Object.keys(data).map(key => ({
             id: key,
             ...data[key]
-        })).sort((a, b) => a.created_at - b.created_at);
+        })).sort((a, b) => {
+          const aVal = a.order !== undefined ? a.order : a.created_at;
+          const bVal = b.order !== undefined ? b.order : b.created_at;
+          return aVal - bVal;
+        });
         setGoals(goalsList);
       } else {
         setGoals([]);
@@ -29,11 +34,16 @@ function GoalsComponent({ token }) {
     try {
       const goalsRef = ref(db, 'goals');
       const newGoalRef = push(goalsRef);
+      // Give the new goal an order value at the end of its respective list
+      const typeList = goals.filter(g => g.type === newGoal.type);
+      const newOrder = typeList.length > 0 ? (typeList[typeList.length - 1].order || typeList.length) + 1 : 0;
+      
       await set(newGoalRef, {
           text: newGoal.text,
           type: newGoal.type,
           completed: false,
-          created_at: Date.now()
+          created_at: Date.now(),
+          order: newOrder
       });
       setNewGoal({ text: '', type: newGoal.type });
     } catch(e) {
@@ -57,6 +67,44 @@ function GoalsComponent({ token }) {
       await remove(goalsRef);
     } catch(e) {
       console.error(e);
+    }
+  };
+
+  const handleDragStart = (e, goal) => {
+    setDraggedGoal(goal);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => { e.target.style.opacity = '0.4'; }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedGoal(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e, targetGoal, type) => {
+    e.preventDefault();
+    if (!draggedGoal || draggedGoal.id === targetGoal.id || draggedGoal.type !== type) return;
+
+    let list = [...goals].filter(g => g.type === type);
+    const draggedIdx = list.findIndex(g => g.id === draggedGoal.id);
+    const targetIdx = list.findIndex(g => g.id === targetGoal.id);
+    
+    list.splice(draggedIdx, 1);
+    list.splice(targetIdx, 0, draggedGoal);
+
+    try {
+      const updates = {};
+      list.forEach((g, index) => {
+        updates[`goals/${g.id}/order`] = index;
+      });
+      await update(ref(db), updates);
+    } catch(err) {
+      console.error("Failed to reorder", err);
     }
   };
 
@@ -92,34 +140,78 @@ function GoalsComponent({ token }) {
       </form>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-        <div>
-          <h4 style={{ marginBottom: '1rem', color: 'var(--accent-color)' }}>Daily Tasks</h4>
-          {dailyGoals.length === 0 ? <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>No daily goals yet.</p> : dailyGoals.map(g => (
-            <div key={g.id} className="list-item" style={{ alignItems: 'center', gap: '1rem' }}>
-              <input 
-                type="checkbox" 
-                checked={g.completed ? true : false} 
-                onChange={() => toggleGoal(g.id, g.completed)} 
-                style={{ width: 'auto', marginBottom: 0, transform: 'scale(1.5)' }}
-              />
-              <span style={{ textDecoration: g.completed ? 'line-through' : 'none', opacity: g.completed ? 0.5 : 1 }}>{g.text}</span>
-            </div>
-          ))}
+        <div onDragOver={handleDragOver}>
+          <h4 style={{ marginBottom: '1rem', color: 'var(--accent-color)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>Daily Tasks</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            {dailyGoals.length === 0 ? <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>No daily goals yet.</p> : dailyGoals.map(g => (
+              <div 
+                key={g.id} 
+                draggable
+                onDragStart={(e) => handleDragStart(e, g)}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, g, 'daily')}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  background: 'var(--glass-bg)', 
+                  border: '1px solid var(--glass-border)', 
+                  padding: '1rem', 
+                  borderRadius: '12px',
+                  cursor: 'grab',
+                  transition: 'opacity 0.2s',
+                  opacity: g.completed ? 0.6 : 1
+                }}
+              >
+                <div style={{ cursor: 'grab', color: 'var(--accent-color)', opacity: 0.5, fontSize: '1.2rem', userSelect: 'none' }}>⋮⋮</div>
+                <input 
+                  type="checkbox" 
+                  checked={g.completed ? true : false} 
+                  onChange={() => toggleGoal(g.id, g.completed)} 
+                  style={{ width: 'auto', marginBottom: 0, transform: 'scale(1.4)', cursor: 'pointer' }}
+                />
+                <span style={{ textDecoration: g.completed ? 'line-through' : 'none', flex: 1 }}>{g.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div>
-           <h4 style={{ marginBottom: '1rem', color: 'var(--accent-color)' }}>Weekly Tasks</h4>
-          {weeklyGoals.length === 0 ? <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>No weekly goals yet.</p> : weeklyGoals.map(g => (
-            <div key={g.id} className="list-item" style={{ alignItems: 'center', gap: '1rem' }}>
-              <input 
-                type="checkbox" 
-                checked={g.completed ? true : false} 
-                onChange={() => toggleGoal(g.id, g.completed)} 
-                style={{ width: 'auto', marginBottom: 0, transform: 'scale(1.5)' }}
-              />
-              <span style={{ textDecoration: g.completed ? 'line-through' : 'none', opacity: g.completed ? 0.5 : 1 }}>{g.text}</span>
-            </div>
-          ))}
+        <div onDragOver={handleDragOver}>
+           <h4 style={{ marginBottom: '1rem', color: 'var(--accent-color)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>Weekly Tasks</h4>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            {weeklyGoals.length === 0 ? <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>No weekly goals yet.</p> : weeklyGoals.map(g => (
+              <div 
+                key={g.id} 
+                draggable
+                onDragStart={(e) => handleDragStart(e, g)}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, g, 'weekly')}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  background: 'var(--glass-bg)', 
+                  border: '1px solid var(--glass-border)', 
+                  padding: '1rem', 
+                  borderRadius: '12px',
+                  cursor: 'grab',
+                  transition: 'opacity 0.2s',
+                  opacity: g.completed ? 0.6 : 1
+                }}
+              >
+                <div style={{ cursor: 'grab', color: 'var(--accent-color)', opacity: 0.5, fontSize: '1.2rem', userSelect: 'none' }}>⋮⋮</div>
+                <input 
+                  type="checkbox" 
+                  checked={g.completed ? true : false} 
+                  onChange={() => toggleGoal(g.id, g.completed)} 
+                  style={{ width: 'auto', marginBottom: 0, transform: 'scale(1.4)', cursor: 'pointer' }}
+                />
+                <span style={{ textDecoration: g.completed ? 'line-through' : 'none', flex: 1 }}>{g.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
