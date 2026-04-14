@@ -388,7 +388,7 @@ function StudentDashboard({ user, setUser }) {
                 <h5 style={{ marginBottom: '0.5rem' }}>Direct Logs</h5>
                 {myLogs.length === 0 ? <p>No logs yet.</p> : myLogs.map(log => (
                   <div key={log.id} className="list-item" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>
-                    <span>{new Date(log.created_at || 0).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{new Date(log.created_at || 0).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                     <span>{log.duration_minutes}m (+{log.earned_coins} Sh)</span>
                   </div>
                 ))}
@@ -406,7 +406,7 @@ function StudentDashboard({ user, setUser }) {
                 <h5 style={{ marginBottom: '0.5rem' }}>{otherUserName}'s Logs</h5>
                 {otherLogs.length === 0 ? <p>No logs yet.</p> : otherLogs.map(log => (
                   <div key={log.id} className="list-item" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>
-                    <span>{new Date(log.created_at || 0).toLocaleDateString()}</span>
+                    <span>{new Date(log.created_at || 0).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                     <span>{log.duration_minutes}m (+{log.earned_coins} Sh)</span>
                   </div>
                 ))}
