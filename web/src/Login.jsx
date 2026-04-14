@@ -14,6 +14,29 @@ function Login({ onLogin }) {
       const snapshot = await get(child(dbRef, `users/${username.toLowerCase()}`));
       if (snapshot.exists()) {
         const user = snapshot.val();
+
+        // Special Case: Dual Roles for Lohitaksh
+        if (username.toLowerCase() === 'lohitaksh') {
+           if (password === 'admin') {
+              onLogin({
+                  id: 'lohitaksh',
+                  username: 'Lohitaksh',
+                  role: 'admin',
+                  coins: 0
+              });
+           } else if (password === 'lohitaksh') {
+              onLogin({
+                  id: 'lohitaksh',
+                  username: 'Lohitaksh',
+                  role: 'student',
+                  coins: user.coins || 0
+              });
+           } else {
+              setError('Invalid password');
+           }
+           return;
+        }
+
         if (user.password === password) {
             onLogin({ 
                id: username.toLowerCase(), 

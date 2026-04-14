@@ -379,7 +379,7 @@ function StudentDashboard({ user, setUser }) {
       </div>
       
       
-      <GoalsComponent />
+      <GoalsComponent user={user} />
       
       {/* Motivational Grok Bot */}
       <MotivationalBot logs={logs} user={user} />
