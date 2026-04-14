@@ -301,11 +301,11 @@ function StudentDashboard({ user, setUser }) {
     }
   }, []);
 
-  const [activeLogTab, setActiveLogTab] = useState(user?.id || 'lohitaksh');
   const otherUser = user?.id === 'lohitaksh' ? 'shreeya' : 'lohitaksh';
-  const otherUserName = user?.id === 'lohitaksh' ? "Shreeya's" : "Lohitaksh's";
+  const otherUserName = user?.id === 'lohitaksh' ? "Shreeya" : "Lohitaksh";
 
-  const displayLogs = logs.filter(l => l.user_id === activeLogTab);
+  const myLogs = logs.filter(l => l.user_id === user?.id);
+  const otherLogs = logs.filter(l => l.user_id === otherUser);
 
   return (
     <div>
@@ -374,41 +374,46 @@ function StudentDashboard({ user, setUser }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3rem', marginBottom: '1rem' }}>
-        <h3 className="title" style={{ fontSize: '1.8rem', margin: 0 }}>Focus Stats & Logs</h3>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            className="btn" 
-            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', background: activeLogTab === user?.id ? 'var(--accent-color)' : 'transparent', border: '1px solid var(--glass-border)' }}
-            onClick={() => setActiveLogTab(user?.id)}
-          >
-            My Progress
-          </button>
-          <button 
-            className="btn" 
-            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', background: activeLogTab === otherUser ? 'var(--accent-color)' : 'transparent', border: '1px solid var(--glass-border)' }}
-            onClick={() => setActiveLogTab(otherUser)}
-          >
-            {otherUserName} Progress
-          </button>
-        </div>
-      </div>
-
-      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        <WeeklyGraph logs={displayLogs} title={`${activeLogTab === user.id ? 'My' : otherUserName} Weekly Study Hours`} />
-        <MonthCalendar logs={displayLogs} title={`${activeLogTab === user.id ? 'My' : otherUserName} Study hours per day`} />
-      </div>
-
-      <div className="glass-card" style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '1rem' }}>
-        {displayLogs.length === 0 ? <p>No logs found for {activeLogTab === user.id ? 'you' : otherUserName.replace("'s", "")}.</p> : displayLogs.map(log => (
-          <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <strong>{new Date(log.created_at || 0).toLocaleString()}</strong>
-              <span>+{log.earned_coins} Sh coins</span>
+      <div style={{ marginTop: '3rem' }}>
+        <h3 className="title" style={{ fontSize: '1.8rem', textAlign: 'center' }}>Transparency Board: Focus Stats</h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem', marginTop: '1rem' }}>
+          {/* My Stats Section */}
+          <div className="glass-card" style={{ border: '2px solid var(--accent-color)' }}>
+            <h4 style={{ marginBottom: '1rem', color: 'var(--accent-color)', textAlign: 'center', fontSize: '1.4rem' }}>My Progress</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <WeeklyGraph logs={myLogs} title="Weekly Hours" />
+              <MonthCalendar logs={myLogs} title="Daily Heatmap" />
+              <div style={{ maxHeight: '250px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
+                <h5 style={{ marginBottom: '0.5rem' }}>Direct Logs</h5>
+                {myLogs.length === 0 ? <p>No logs yet.</p> : myLogs.map(log => (
+                  <div key={log.id} className="list-item" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                    <span>{new Date(log.created_at || 0).toLocaleDateString()}</span>
+                    <span>{log.duration_minutes}m (+{log.earned_coins} Sh)</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>Focused for {log.duration_minutes} minutes</div>
           </div>
-        ))}
+
+          {/* Other Student Stats Section */}
+          <div className="glass-card">
+            <h4 style={{ marginBottom: '1rem', opacity: 0.8, textAlign: 'center', fontSize: '1.4rem' }}>{otherUserName}'s Progress</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <WeeklyGraph logs={otherLogs} title={`${otherUserName}'s Weekly Hours`} />
+              <MonthCalendar logs={otherLogs} title={`${otherUserName}'s Heatmap`} />
+              <div style={{ maxHeight: '250px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
+                <h5 style={{ marginBottom: '0.5rem' }}>{otherUserName}'s Logs</h5>
+                {otherLogs.length === 0 ? <p>No logs yet.</p> : otherLogs.map(log => (
+                  <div key={log.id} className="list-item" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                    <span>{new Date(log.created_at || 0).toLocaleDateString()}</span>
+                    <span>{log.duration_minutes}m (+{log.earned_coins} Sh)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
       
