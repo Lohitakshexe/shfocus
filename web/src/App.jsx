@@ -58,7 +58,6 @@ function App() {
       <nav className="navbar glass-card" style={{ marginBottom: '2rem' }}>
         <h1 className="title" style={{ margin: 0, fontSize: '1.5rem' }}>Goals & Rewards</h1>
         <div className="navbar-right">
-          <Clock />
           <ThemeSwitcher currentStyle={uiStyle} onStyleChange={handleStyleChange} />
           <button className="btn btn-secondary" onClick={toggleTheme}>
             {theme === 'light' ? '🌙 Dark' : '☀️ Light'}

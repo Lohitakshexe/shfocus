@@ -4,6 +4,7 @@ import { ref, onValue, push, set, remove, update, get } from 'firebase/database'
 import GoalsComponent from './GoalsComponent';
 import WeeklyGraph from './WeeklyGraph';
 import MonthCalendar from './MonthCalendar';
+import Clock from './Clock';
 
 function AdminDashboard({ user }) {
   const [bannedSites, setBannedSites] = useState([]);
@@ -196,7 +197,12 @@ function AdminDashboard({ user }) {
 
   return (
     <div>
-      <h2 className="title" style={{ fontSize: '2rem', marginBottom: '2rem' }}>Admin Control Panel</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
+        <h2 className="title" style={{ fontSize: '2.3rem', margin: 0 }}>Admin Control Panel</h2>
+        <div style={{ background: 'var(--glass-bg)', padding: '1rem', borderRadius: '50%', border: '1px solid var(--glass-border)' }}>
+          <Clock size={100} />
+        </div>
+      </div>
       
       <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
         <WeeklyGraph logs={shreeyaLogs} title="Shreeya's Weekly Study Hours" />

@@ -5,6 +5,7 @@ import GoalsComponent from './GoalsComponent';
 import WeeklyGraph from './WeeklyGraph';
 import MonthCalendar from './MonthCalendar';
 import MotivationalBot from './MotivationalBot';
+import Clock from './Clock';
 
 function StudentDashboard({ user, setUser }) {
   const [coins, setCoins] = useState(user.coins || 0);
@@ -335,8 +336,11 @@ function StudentDashboard({ user, setUser }) {
           )}
         </div>
 
-        <div className="stopwatch-display">
-          {formatTime(time)}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '3rem', margin: '2.5rem 0' }}>
+          <Clock size={160} />
+          <div className="stopwatch-display" style={{ margin: 0 }}>
+            {formatTime(time)}
+          </div>
         </div>
         
         <div className="controls">
