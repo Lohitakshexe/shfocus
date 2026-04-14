@@ -392,7 +392,7 @@ function AdminDashboard({ user }) {
                 <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <strong>{log.username || log.user_id}</strong>
-                    <span>{new Date(log.created_at || 0).toLocaleString()}</span>
+                    <span>{new Date(log.created_at || 0).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                   </div>
                   <div>Duration: {log.duration_minutes} mins | Earned: +{log.earned_coins} Sh coins</div>
                 </div>
@@ -411,7 +411,7 @@ function AdminDashboard({ user }) {
           {redeemed.length === 0 ? <p>No rewards redeemed yet.</p> : redeemed.map(r => (
             <div key={r.id} className="list-item">
               <span><strong>{r.username}</strong> redeemed <em>{r.reward_name}</em> for {r.cost} Sh coins.</span>
-              <span style={{ opacity: 0.6 }}>{new Date(r.created_at || 0).toLocaleString()}</span>
+              <span style={{ opacity: 0.6 }}>{new Date(r.created_at || 0).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
             </div>
           ))}
         </div>
