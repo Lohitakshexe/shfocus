@@ -54,7 +54,7 @@ function MotivationalBot({ logs, user }) {
     let weekMinutes = 0;
     const dailyMap = {};
 
-    logs.forEach(log => {
+    logs.filter(log => log.user_id === user.id).forEach(log => {
       const d = new Date(log.created_at);
       const isToday = d.toDateString() === todayStr;
       const daysDiff = (now - d) / (1000 * 60 * 60 * 24);
