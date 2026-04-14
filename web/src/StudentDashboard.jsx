@@ -82,13 +82,12 @@ function StudentDashboard({ user, setUser }) {
       } else setRewards([]);
     });
 
-    // Fetch personal logs
+    // Fetch all logs
     const logsRef = ref(db, 'logs');
     const unsubLogs = onValue(logsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         let lList = Object.keys(data).map(k => ({ id: k, ...data[k] }))
-                                   .filter(l => l.user_id === user.id)
                                    .sort((a,b) => b.created_at - a.created_at);
         setLogs(lList);
       } else {
@@ -296,6 +295,12 @@ function StudentDashboard({ user, setUser }) {
     }
   }, []);
 
+  const [activeLogTab, setActiveLogTab] = useState(user?.id || 'lohitaksh');
+  const otherUser = user?.id === 'lohitaksh' ? 'shreeya' : 'lohitaksh';
+  const otherUserName = user?.id === 'lohitaksh' ? "Shreeya's" : "Lohitaksh's";
+
+  const displayLogs = logs.filter(l => l.user_id === activeLogTab);
+
   return (
     <div>
       {toast && (
@@ -315,7 +320,7 @@ function StudentDashboard({ user, setUser }) {
       )}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', marginTop: '1rem' }}>
         <h2 className="title" style={{ marginTop: '1rem', fontSize: '1.8rem', textAlign: 'center' }}>
-          Heloo Beautiful!! Study time eh?!
+          {user.id === 'lohitaksh' ? 'hello lohitaksh' : 'Heloo Beautiful!! Study time eh?!'}
         </h2>
       </div>
 
@@ -360,14 +365,33 @@ function StudentDashboard({ user, setUser }) {
         ))}
       </div>
 
-      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '2rem' }}>
-        <WeeklyGraph logs={logs} title="My Weekly Study Hours" />
-        <MonthCalendar logs={logs} title="Study hours per day" />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3rem', marginBottom: '1rem' }}>
+        <h3 className="title" style={{ fontSize: '1.8rem', margin: 0 }}>Focus Stats & Logs</h3>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className="btn" 
+            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', background: activeLogTab === user?.id ? 'var(--accent-color)' : 'transparent', border: '1px solid var(--glass-border)' }}
+            onClick={() => setActiveLogTab(user?.id)}
+          >
+            My Progress
+          </button>
+          <button 
+            className="btn" 
+            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', background: activeLogTab === otherUser ? 'var(--accent-color)' : 'transparent', border: '1px solid var(--glass-border)' }}
+            onClick={() => setActiveLogTab(otherUser)}
+          >
+            {otherUserName} Progress
+          </button>
+        </div>
       </div>
 
-      <h3 className="title" style={{ fontSize: '1.8rem', marginTop: '3rem' }}>My Focus Logs</h3>
-      <div className="glass-card" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-        {logs.length === 0 ? <p>No logs yet. Start focusing!</p> : logs.map(log => (
+      <div className="glass-card" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        <WeeklyGraph logs={displayLogs} title={`${activeLogTab === user.id ? 'My' : otherUserName} Weekly Study Hours`} />
+        <MonthCalendar logs={displayLogs} title={`${activeLogTab === user.id ? 'My' : otherUserName} Study hours per day`} />
+      </div>
+
+      <div className="glass-card" style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '1rem' }}>
+        {displayLogs.length === 0 ? <p>No logs found for {activeLogTab === user.id ? 'you' : otherUserName.replace("'s", "")}.</p> : displayLogs.map(log => (
           <div key={log.id} className="list-item" style={{ flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <strong>{new Date(log.created_at || 0).toLocaleString()}</strong>
