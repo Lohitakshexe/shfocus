@@ -245,12 +245,12 @@ function AdminDashboard({ user }) {
                     {s.state !== 'Offline' && (
                       <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '0.3rem' }}>
                         Studying for: <strong style={{ color: 'var(--accent-color)' }}>{s.time_minutes} mins</strong>
-                        {s.updated_at && (
+                        {s.started_at && (
                           <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.7, fontWeight: 'bold', color: 'var(--accent-color)' }}>
                             ({s.state === 'Paused' ? 'Paused' : 'Active'} 
-                            {Math.floor((Date.now() - s.updated_at) / 1000) < 60 
+                            {Math.floor((Date.now() - s.started_at) / 1000) < 60 
                               ? ' just now' 
-                              : ` since ${Math.floor((Date.now() - s.updated_at) / 60000)} mins ago`
+                              : ` since ${Math.floor((Date.now() - s.started_at) / 60000)} mins ago`
                             })
                           </span>
                         )}

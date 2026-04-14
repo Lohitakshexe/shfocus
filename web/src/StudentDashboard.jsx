@@ -15,7 +15,7 @@ function StudentDashboard({ user, setUser }) {
   const [logs, setLogs] = useState([]);
   const [toast, setToast] = useState(null);
   const [statusLabel, setStatusLabel] = useState('Offline');
-  const [statusUpdatedAt, setStatusUpdatedAt] = useState(() => Date.now());
+  const [statusStartedAt, setStatusStartedAt] = useState(() => Date.now());
   const [, setTick] = useState(0); // Force re-render for time display
 
   
@@ -104,14 +104,19 @@ function StudentDashboard({ user, setUser }) {
   }, [user.id, setUser]);
 
   const syncStatus = (state, seconds) => {
-    setStatusLabel(state);
     const now = Date.now();
-    setStatusUpdatedAt(now);
+    
+    if (state !== statusLabel) {
+      setStatusLabel(state);
+      setStatusStartedAt(now);
+    }
+    
     try {
       update(ref(db, `users/${user.id}/status`), {
         state,
         time_minutes: Math.floor(seconds / 60),
-        updated_at: now
+        started_at: state !== statusLabel ? now : statusStartedAt,
+        last_heartbeat: now
       });
     } catch (e) {
       console.error("Failed to sync status", e);
@@ -331,7 +336,7 @@ function StudentDashboard({ user, setUser }) {
         <div style={{ marginTop: '1rem', fontSize: '1.2rem', fontWeight: 'bold', color: statusLabel === 'Studying' ? '#22c55e' : statusLabel === 'On Break' ? '#3b82f6' : statusLabel === 'Paused' ? '#eab308' : '#ef4444' }}>
           Status: {statusLabel} {statusLabel !== 'Offline' && (
             <span style={{ fontSize: '0.9rem', opacity: 0.7, fontWeight: 'normal', fontStyle: 'italic' }}>
-              (Since {Math.floor((Date.now() - statusUpdatedAt) / 60000)} mins ago)
+              (Since {Math.floor((Date.now() - statusStartedAt) / 60000)} mins ago)
             </span>
           )}
         </div>
