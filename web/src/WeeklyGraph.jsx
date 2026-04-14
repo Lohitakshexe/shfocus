@@ -1,17 +1,14 @@
 import React from 'react';
+import { getWeekStart } from './utils';
 
 const WeeklyGraph = ({ logs, title = "Weekly Study Hours" }) => {
   // Array to map indices to day labels
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const totals = [0, 0, 0, 0, 0, 0, 0]; // representing minutes per day
 
-  // Get current time adjusted by 2 hours to push anything before 2 AM to the previous day
-  const now = new Date(Date.now() - 7200000);
-  const dayOfWeek = now.getDay(); // 0 is Sun, 1 is Mon
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  now.setHours(0, 0, 0, 0);
-  
-  const startOfCurrentWeek = new Date(now.getTime() - (diffToMonday * 24 * 60 * 60 * 1000));
+  const weekStart = getWeekStart();
+  const dayOfWeek = (new Date().getDay() || 7) - 1; // 0=Mon, 6=Sun for current day indicator
+  const startOfCurrentWeek = weekStart;
 
   if (logs && logs.length > 0) {
     logs.forEach(log => {
@@ -51,7 +48,7 @@ const WeeklyGraph = ({ logs, title = "Weekly Study Hours" }) => {
        }}>
         {days.map((day, ix) => {
           const heightPercent = (totals[ix] / maxMins) * 100;
-          const isActive = diffToMonday === ix; 
+          const isActive = dayOfWeek === ix; 
           return (
             <div key={day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '10%', height: '100%', justifyContent: 'flex-end' }}>
               <div 
@@ -72,8 +69,8 @@ const WeeklyGraph = ({ logs, title = "Weekly Study Hours" }) => {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.8rem', padding: '0 1rem' }}>
          {days.map((day, ix) => (
-             <div key={'label-'+day} style={{ width: '10%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                 <span style={{ fontSize: '0.8rem', fontWeight: diffToMonday === ix ? 'bold' : 'normal', opacity: diffToMonday === ix ? 1 : 0.7 }}>{day}</span>
+              <div key={'label-'+day} style={{ width: '10%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: dayOfWeek === ix ? 'bold' : 'normal', opacity: dayOfWeek === ix ? 1 : 0.7 }}>{day}</span>
                  <span style={{ fontSize: '0.7rem', opacity: 0.5, marginTop: '2px' }}>{totals[ix] > 0 ? formatHours(totals[ix]) : ''}</span>
              </div>
          ))}

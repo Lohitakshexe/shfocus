@@ -115,6 +115,7 @@ function StudentDashboard({ user, setUser }) {
       update(ref(db, `users/${user.id}/status`), {
         state,
         time_minutes: Math.floor(seconds / 60),
+        session_minutes: Math.floor(seconds / 60), // Backup for recovery
         started_at: state !== statusLabel ? now : statusStartedAt,
         last_heartbeat: now
       });
@@ -122,6 +123,25 @@ function StudentDashboard({ user, setUser }) {
       console.error("Failed to sync status", e);
     }
   };
+
+  // Recovery Logic for crashed sessions
+  useEffect(() => {
+    const checkRecovery = async () => {
+      const statusRef = ref(db, `users/${user.id}/status`);
+      const snap = await get(statusRef);
+      if (snap.exists()) {
+        const s = snap.val();
+        // If they were 'Studying' but the last heartbeat was over 10 mins ago, recover the time
+        if (s.state === 'Studying' && s.session_minutes > 0 && (Date.now() - (s.last_heartbeat || 0)) > 600000) {
+            console.log(`Recovering ${s.session_minutes} mins from abandoned session...`);
+            await recordLog(s.session_minutes);
+            await update(statusRef, { state: 'Offline', session_minutes: 0, time_minutes: 0 });
+            setStatusLabel('Offline');
+        }
+      }
+    };
+    checkRecovery();
+  }, [user.id]);
 
   // Handle Stopwatch
   useEffect(() => {
@@ -202,20 +222,10 @@ function StudentDashboard({ user, setUser }) {
   }, []);
 
 
-  // Window unload leftover logging
+  // Clean sync on mount
   useEffect(() => {
-    const handleUnload = () => {
-      syncStatus('Offline', 0);
-      if (isRunningRef.current || timeRef.current > 0) {
-        const totalMinutes = Math.floor(timeRef.current / 60);
-        if (totalMinutes > 0) {
-            recordLog(totalMinutes);
-        }
-      }
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [user.id]);
+    syncStatus('Offline', 0);
+  }, []);
 
   const formatTime = (totalSeconds) => {
     const h = Math.floor(totalSeconds / 3600);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
 import { ref, onValue } from 'firebase/database';
+import { getWeekStart } from './utils';
 
 function MotivationalBot({ logs, user }) {
   const [isOpen, setIsOpen] = useState(true);
@@ -54,14 +55,15 @@ function MotivationalBot({ logs, user }) {
     let weekMinutes = 0;
     const dailyMap = {};
 
+    const weekStart = getWeekStart();
+
     logs.filter(log => log.user_id === user.id).forEach(log => {
       const d = new Date(log.created_at);
       const isToday = d.toDateString() === todayStr;
-      const daysDiff = (now - d) / (1000 * 60 * 60 * 24);
-
+      
       if (isToday) todayMinutes += log.duration_minutes;
       
-      if (daysDiff <= 7) {
+      if (log.created_at >= weekStart.getTime()) {
         weekMinutes += log.duration_minutes;
         const ds = d.toDateString();
         dailyMap[ds] = (dailyMap[ds] || 0) + log.duration_minutes;
