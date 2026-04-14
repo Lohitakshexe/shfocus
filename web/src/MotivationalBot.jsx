@@ -212,7 +212,7 @@ Use this data naturally to guide them. If their stats are low (< 1.4 hrs), give 
       {/* The Blob Trigger */}
       {!isOpen && (
         <div className="bot-blob" onClick={() => setIsOpen(true)}>
-          <span>✨</span>
+          <img src={import.meta.env.BASE_URL + "blobavatar.jpg"} alt="Blob" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
         </div>
       )}
 
@@ -220,7 +220,10 @@ Use this data naturally to guide them. If their stats are low (< 1.4 hrs), give 
       {isOpen && (
         <div className="chat-window glass-card">
           <div className="chat-header">
-            <h4>Blob 💬</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              <img src={import.meta.env.BASE_URL + "blobavatar.jpg"} alt="Blob" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />
+              <h4>Blob</h4>
+            </div>
             <button className="btn btn-secondary close-btn" onClick={() => setIsOpen(false)}>×</button>
           </div>
           
