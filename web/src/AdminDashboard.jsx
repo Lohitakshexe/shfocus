@@ -60,7 +60,7 @@ function AdminDashboard({ user }) {
       const data = snap.val();
       if (data) {
         const studentList = Object.keys(data)
-          .filter(k => data[k].role === 'student' || k === 'lohitaksh')
+          .filter(k => data[k].role === 'student' || k.toLowerCase() === 'lohitaksh')
           .map(k => ({ id: k, ...data[k] }));
         setStudentsStatus(studentList);
       } else setStudentsStatus([]);
@@ -241,7 +241,11 @@ function AdminDashboard({ user }) {
                         Studying for: <strong style={{ color: 'var(--accent-color)' }}>{s.time_minutes} mins</strong>
                         {s.updated_at && (
                           <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.7, fontWeight: 'bold', color: 'var(--accent-color)' }}>
-                            ({s.state === 'Paused' ? 'Paused' : 'Active'} since {Math.floor((Date.now() - s.updated_at) / 60000)} mins ago)
+                            ({s.state === 'Paused' ? 'Paused' : 'Active'} 
+                            {Math.floor((Date.now() - s.updated_at) / 1000) < 60 
+                              ? ' just now' 
+                              : ` since ${Math.floor((Date.now() - s.updated_at) / 60000)} mins ago`
+                            })
                           </span>
                         )}
                       </div>
