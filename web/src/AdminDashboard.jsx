@@ -29,7 +29,7 @@ function AdminDashboard({ user }) {
       if (data) {
         setBannedSites(Object.keys(data).map(k => ({ id: k, ...data[k] })));
       } else setBannedSites([]);
-    });
+    }, (error) => console.error("Banned sites listener failed:", error));
 
     const unsubLogs = onValue(ref(db, 'logs'), (snap) => {
       const data = snap.val();
@@ -39,7 +39,7 @@ function AdminDashboard({ user }) {
                                       .slice(0, 50);
         setLogs(list);
       } else setLogs([]);
-    });
+    }, (error) => console.error("Logs listener failed:", error));
 
     const unsubRedeemed = onValue(ref(db, 'redeemed'), (snap) => {
       const data = snap.val();
@@ -59,6 +59,7 @@ function AdminDashboard({ user }) {
 
     const unsubUsers = onValue(ref(db, 'users'), (snap) => {
       const data = snap.val();
+      console.log("AdminDashboard received users data:", data);
       if (data) {
         const studentList = Object.keys(data)
           .filter(k => {
@@ -66,9 +67,13 @@ function AdminDashboard({ user }) {
             return lowKey === 'shreeya' || lowKey === 'lohitaksh' || data[k].role === 'student';
           })
           .map(k => ({ id: k, ...data[k] }));
+        console.log("Filtered student list:", studentList);
         setStudentsStatus(studentList);
-      } else setStudentsStatus([]);
-    });
+      } else {
+        console.warn("No users found in database node /users");
+        setStudentsStatus([]);
+      }
+    }, (error) => console.error("Users listener failed:", error));
 
     const unsubSettings = onValue(ref(db, 'settings/groq_api_key'), (snap) => {
       setDbApiKey(snap.val() || '');
