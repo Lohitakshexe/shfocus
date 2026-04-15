@@ -61,7 +61,10 @@ function AdminDashboard({ user }) {
       const data = snap.val();
       if (data) {
         const studentList = Object.keys(data)
-          .filter(k => data[k].role === 'student' || k.toLowerCase() === 'lohitaksh')
+          .filter(k => {
+            const lowKey = k.toLowerCase();
+            return lowKey === 'shreeya' || lowKey === 'lohitaksh' || data[k].role === 'student';
+          })
           .map(k => ({ id: k, ...data[k] }));
         setStudentsStatus(studentList);
       } else setStudentsStatus([]);

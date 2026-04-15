@@ -1,8 +1,8 @@
 {
   "rules": {
     "users": {
+        ".read": "true",
         "$uid": {
-          ".read": "true",
           ".write": "true",
           "status": {
             ".validate": "newData.hasChildren(['state', 'last_heartbeat'])"
@@ -29,6 +29,10 @@
       ".write": "false"
     },
     "goals": {
+      ".read": "true",
+      ".write": "true"
+    },
+    "banned-sites": {
       ".read": "true",
       ".write": "true"
     }
