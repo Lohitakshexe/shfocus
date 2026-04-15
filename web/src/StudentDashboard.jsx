@@ -16,6 +16,7 @@ function StudentDashboard({ user, setUser }) {
   const [toast, setToast] = useState(null);
   const [statusLabel, setStatusLabel] = useState('Offline');
   const [statusStartedAt, setStatusStartedAt] = useState(() => Date.now());
+  const [otherStatus, setOtherStatus] = useState(null);
   const [, setTick] = useState(0); // Force re-render for time display
 
   
@@ -96,10 +97,18 @@ function StudentDashboard({ user, setUser }) {
       }
     });
 
+    // Fetch other student status
+    const otherUser = user?.id === 'lohitaksh' ? 'shreeya' : 'lohitaksh';
+    const otherStatusRef = ref(db, `users/${otherUser}/status`);
+    const unsubOtherStatus = onValue(otherStatusRef, (snapshot) => {
+      setOtherStatus(snapshot.val());
+    });
+
     return () => {
       unsubUser();
       unsubRewards();
       unsubLogs();
+      unsubOtherStatus();
     };
   }, [user.id, setUser]);
 
@@ -408,9 +417,30 @@ function StudentDashboard({ user, setUser }) {
             </div>
           </div>
 
-          {/* Other Student Stats Section */}
           <div className="glass-card">
             <h4 style={{ marginBottom: '1rem', opacity: 0.8, textAlign: 'center', fontSize: '1.4rem' }}>{otherUserName}'s Progress</h4>
+            
+            {/* Live Status indicator for Other User */}
+            <div style={{ 
+              marginBottom: '1.5rem', 
+              padding: '0.8rem', 
+              borderRadius: '12px', 
+              background: 'rgba(255,255,255,0.05)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '1rem',
+              border: '1px solid var(--glass-border)'
+            }}>
+              <span style={{ fontSize: '0.9rem', opacity: 0.7 }}>Current Status:</span>
+              <strong style={{ 
+                color: otherStatus?.state === 'Studying' ? '#22c55e' : otherStatus?.state === 'On Break' ? '#3b82f6' : otherStatus?.state === 'Paused' ? '#eab308' : '#ef4444' 
+              }}>
+                {otherStatus?.state || 'Offline'}
+                {otherStatus?.state !== 'Offline' && otherStatus?.time_minutes > 0 && ` (${otherStatus.time_minutes}m)`}
+              </strong>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               <WeeklyGraph logs={otherLogs} title={`${otherUserName}'s Weekly Hours`} />
               <MonthCalendar logs={otherLogs} title={`${otherUserName}'s Heatmap`} />
