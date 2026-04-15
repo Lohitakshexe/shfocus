@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "users": {
+        "$uid": {
+          ".read": "true",
+          ".write": "true",
+          "status": {
+            ".validate": "newData.hasChildren(['state', 'last_heartbeat'])"
+          }
+        }
+    },
+    "logs": {
+      ".read": "true",
+      ".write": "true",
+      "$logid": {
+        ".validate": "newData.hasChildren(['user_id', 'duration_minutes', 'created_at'])"
+      }
+    },
+    "rewards": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "redeemed": {
+      ".read": "true",
+      ".write": "true"
+    },
+    "settings": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "goals": {
+      ".read": "true",
+      ".write": "true"
+    }
+  }
+}

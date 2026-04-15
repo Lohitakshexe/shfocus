@@ -124,23 +124,37 @@ function StudentDashboard({ user, setUser }) {
     }
   };
 
-  // Recovery Logic for crashed sessions
+  // Initialization: Check for interrupted sessions then sync Offline
   useEffect(() => {
-    const checkRecovery = async () => {
-      const statusRef = ref(db, `users/${user.id}/status`);
-      const snap = await get(statusRef);
-      if (snap.exists()) {
-        const s = snap.val();
-        // If they were 'Studying' but the last heartbeat was over 10 mins ago, recover the time
-        if (s.state === 'Studying' && s.session_minutes > 0 && (Date.now() - (s.last_heartbeat || 0)) > 600000) {
-            console.log(`Recovering ${s.session_minutes} mins from abandoned session...`);
+    const initialize = async () => {
+      try {
+        const statusRef = ref(db, `users/${user.id}/status`);
+        const snap = await get(statusRef);
+        
+        if (snap.exists()) {
+          const s = snap.val();
+          // If the user was in a non-Offline state and has unsaved minutes, recover them.
+          // We use a 5-minute threshold to decide if the session is "orphaned".
+          // If the user just refreshed, we want to either RESUME or RECLAIM.
+          // Reclaiming is safer to prevent duplicates.
+          const isStale = (Date.now() - (s.last_heartbeat || 0)) > 300000;
+          
+          if (s.state !== 'Offline' && s.session_minutes > 0) {
+            console.log(`Recovering ${s.session_minutes} mins from interrupted session...`);
             await recordLog(s.session_minutes);
+            // Clear it in DB immediately
             await update(statusRef, { state: 'Offline', session_minutes: 0, time_minutes: 0 });
-            setStatusLabel('Offline');
+          }
         }
+      } catch (err) {
+        console.error("Initialization check failed:", err);
+      } finally {
+        // Finally, set the current app instance to Offline
+        syncStatus('Offline', 0);
       }
     };
-    checkRecovery();
+    
+    initialize();
   }, [user.id]);
 
   // Handle Stopwatch
@@ -202,7 +216,7 @@ function StudentDashboard({ user, setUser }) {
   }, [isRunning, user.id]);
 
 
-  // Listen for extension messages
+  // Extension listener
   useEffect(() => {
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'PAUSE_TIMER') {
@@ -213,18 +227,6 @@ function StudentDashboard({ user, setUser }) {
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  // Update relative time every minute
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-
-  // Clean sync on mount
-  useEffect(() => {
-    syncStatus('Offline', 0);
   }, []);
 
   const formatTime = (totalSeconds) => {
@@ -346,7 +348,7 @@ function StudentDashboard({ user, setUser }) {
         <div style={{ marginTop: '1rem', fontSize: '1.2rem', fontWeight: 'bold', color: statusLabel === 'Studying' ? '#22c55e' : statusLabel === 'On Break' ? '#3b82f6' : statusLabel === 'Paused' ? '#eab308' : '#ef4444' }}>
           Status: {statusLabel} {statusLabel !== 'Offline' && (
             <span style={{ fontSize: '0.9rem', opacity: 0.7, fontWeight: 'normal', fontStyle: 'italic' }}>
-              (Since {Math.floor((Date.now() - statusStartedAt) / 60000)} mins ago)
+              (Since {Math.floor((new Date().getTime() - statusStartedAt) / 60000)} mins ago)
             </span>
           )}
         </div>

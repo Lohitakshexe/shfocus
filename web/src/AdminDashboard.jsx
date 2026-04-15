@@ -248,9 +248,9 @@ function AdminDashboard({ user }) {
                         {s.started_at && (
                           <span style={{ marginLeft: '1rem', fontSize: '0.8rem', opacity: 0.7, fontWeight: 'bold', color: 'var(--accent-color)' }}>
                             ({s.state === 'Paused' ? 'Paused' : 'Active'} 
-                            {Math.floor((Date.now() - s.started_at) / 1000) < 60 
+                            {Math.floor((new Date().getTime() - s.started_at) / 1000) < 60 
                               ? ' just now' 
-                              : ` since ${Math.floor((Date.now() - s.started_at) / 60000)} mins ago`
+                              : ` since ${Math.floor((new Date().getTime() - s.started_at) / 60000)} mins ago`
                             })
                           </span>
                         )}
