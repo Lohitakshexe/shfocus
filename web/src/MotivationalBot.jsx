@@ -37,7 +37,9 @@ function MotivationalBot({ logs, user }) {
         const goalsList = Object.keys(data).map(key => ({
             id: key,
             ...data[key]
-        })).sort((a, b) => (a.order !== undefined ? a.order : a.created_at) - (b.order !== undefined ? b.order : b.created_at));
+        }))
+        .filter(g => g.user_id === user.id)
+        .sort((a, b) => (a.order !== undefined ? a.order : a.created_at) - (b.order !== undefined ? b.order : b.created_at));
         setGoals(goalsList);
       } else {
         setGoals([]);
@@ -45,7 +47,7 @@ function MotivationalBot({ logs, user }) {
       setGoalsLoaded(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user.id]);
 
   const crunchStats = () => {
     const now = new Date();
