@@ -12,6 +12,7 @@ function MotivationalBot({ logs, user }) {
   const [goals, setGoals] = useState([]);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
   const scrollRef = useRef(null);
+  const greetingFetched = useRef(false);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -89,65 +90,68 @@ function MotivationalBot({ logs, user }) {
 
   // Initial Greeting when API key is ready
   useEffect(() => {
-    if (messages.length === 0 && apiKey) {
+    if (messages.length === 0 && apiKey && goalsLoaded && !greetingFetched.current) {
+      greetingFetched.current = true;
       const stats = crunchStats();
       const todayHours = (stats.todayMinutes / 60).toFixed(1);
       const weekHours = (stats.weekMinutes / 60).toFixed(1);
       
-      const funFacts = [
-        "Fun Fact: Your brain uses 20% of your body's energy despite being only 2% of your total weight!",
-        "Fun Fact: Learning new things rewires your brain and actually creates new physical neural pathways.",
-        "Fun Fact: Spaced repetition is scientifically proven to increase long-term memory retention by over 200%.",
-        "Fun Fact: Hydration directly affects your focus; drinking water can boost brain performance by 14%.",
-        "Fun Fact: Teaching a topic to someone else is psychologically the fastest way to truly master it.",
-        "Fun Fact: Chewing gum while studying and during a test can actually improve your memory recall!",
-        "Fun Fact: Short, frequent breaks (like the Pomodoro technique) improve focus and prevent cognitive fatigue.",
-        "Fun Fact: The brain can process images an incredible 60,000 times faster than text.",
-        "Fun Fact: Sleep is when your brain consolidates what you've learned into long-term memory.",
-        "Fun Fact: Listening to music without lyrics can help you concentrate and boost your mood while studying.",
-        "Fun Fact: The hippocampus, the part of the brain responsible for learning, actually grows when you learn new skills.",
-        "Fun Fact: Exercising before studying increases blood flow to the brain, enhancing memory and cognitive function.",
-        "Fun Fact: Scent is strongly tied to memory. Smelling peppermint can increase alertness and memory recall.",
-        "Fun Fact: Writing things down by hand improves memory retention far better than typing.",
-        "Fun Fact: Your brain generates enough electricity to power a small LED light bulb.",
-        "Fun Fact: The Zeigarnik effect states that people remember uncompleted or interrupted tasks better than completed ones.",
-        "Fun Fact: Mild background noise, like the hum of a coffee shop, has been shown to boost creativity.",
-        "Fun Fact: Taking a short nap (20-30 minutes) can significantly improve alertness and motor learning.",
-        "Fun Fact: Visualizing yourself succeeding at a task can actually improve your physical performance of it.",
-        "Fun Fact: Procrastination is often an emotional regulation problem, not a time management problem.",
-        "Fun Fact: Reading out loud has been shown to improve memory retention of the material.",
-        "Fun Fact: Information studied right before you go to sleep is retained much better than during the day.",
-        "Fun Fact: The color blue has been shown to enhance creativity, while red enhances attention to detail."
-      ];
-      const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
-      
-      let greeting = `Hey ${user.username || user.id}, I'm Blob, your Study Coach.\n\n${randomFact}\n\n`;
-      if (stats.todayMinutes > 0) {
-        greeting += `Right now, you've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. `;
-      } else {
-        greeting += `I see ${weekHours} hours logged this week, but zero hours today. `;
-      }
-
-      // Add Task logic dynamically
-      if (goals.length > 0) {
-        const pending = goals.filter(g => !g.completed);
-        const completed = goals.filter(g => g.completed);
-        if (completed.length > 0) {
-          greeting += `You've already knocked out ${completed.length} tasks, but still have ${pending.length} pending. `;
-        } else if (pending.length > 0) {
-          greeting += `You have ${pending.length} tasks completely untouched. `;
+      const generateGreeting = async () => {
+        setIsLoading(true);
+        let randomFact = "Fun Fact: Learning rewires your brain and actually creates new physical neural pathways.";
+        
+        try {
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: "llama-3.3-70b-versatile",
+              messages: [{ role: "user", content: "Tell me one extremely brief, unique, and interesting fun fact about the human brain, psychology, or studying. Start your response with 'Fun Fact: '" }],
+              temperature: 0.9
+            })
+          });
+          if (response.ok) {
+             const data = await response.json();
+             if (data.choices && data.choices[0]) {
+               randomFact = data.choices[0].message.content.trim();
+             }
+          }
+        } catch (e) {
+          console.error("Failed to fetch dynamic fact", e);
         }
-      }
 
-      if (stats.todayMinutes > 0) {
-          greeting += `Let's keep working. What are we focusing on next? 🔥`;
-      } else {
-          greeting += `Time to stop slacking and lock in. What's the plan for today? ⚡`;
-      }
+        let greeting = `Hey ${user.username || user.id}, I'm Blob, your Study Coach.\n\n${randomFact}\n\n`;
+        if (stats.todayMinutes > 0) {
+          greeting += `Right now, you've locked in for ${todayHours} hours today, bringing you to ${weekHours} hours this week. `;
+        } else {
+          greeting += `I see ${weekHours} hours logged this week, but zero hours today. `;
+        }
 
-      setTimeout(() => {
+        // Add Task logic dynamically
+        if (goals.length > 0) {
+          const pending = goals.filter(g => !g.completed);
+          const completed = goals.filter(g => g.completed);
+          if (completed.length > 0) {
+            greeting += `You've already knocked out ${completed.length} tasks, but still have ${pending.length} pending. `;
+          } else if (pending.length > 0) {
+            greeting += `You have ${pending.length} tasks completely untouched. `;
+          }
+        }
+
+        if (stats.todayMinutes > 0) {
+            greeting += `Let's keep working. What are we focusing on next? 🔥`;
+        } else {
+            greeting += `Time to stop slacking and lock in. What's the plan for today? ⚡`;
+        }
+
         setMessages([{ role: 'assistant', content: greeting }]);
-      }, 1000);
+        setIsLoading(false);
+      };
+
+      generateGreeting();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, user.username, user.id, messages.length, goalsLoaded]);
