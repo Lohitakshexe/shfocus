@@ -100,7 +100,24 @@ function MotivationalBot({ logs, user }) {
         "Fun Fact: Spaced repetition is scientifically proven to increase long-term memory retention by over 200%.",
         "Fun Fact: Hydration directly affects your focus; drinking water can boost brain performance by 14%.",
         "Fun Fact: Teaching a topic to someone else is psychologically the fastest way to truly master it.",
-        "Fun Fact: Chewing gum while studying and during a test can actually improve your memory recall!"
+        "Fun Fact: Chewing gum while studying and during a test can actually improve your memory recall!",
+        "Fun Fact: Short, frequent breaks (like the Pomodoro technique) improve focus and prevent cognitive fatigue.",
+        "Fun Fact: The brain can process images an incredible 60,000 times faster than text.",
+        "Fun Fact: Sleep is when your brain consolidates what you've learned into long-term memory.",
+        "Fun Fact: Listening to music without lyrics can help you concentrate and boost your mood while studying.",
+        "Fun Fact: The hippocampus, the part of the brain responsible for learning, actually grows when you learn new skills.",
+        "Fun Fact: Exercising before studying increases blood flow to the brain, enhancing memory and cognitive function.",
+        "Fun Fact: Scent is strongly tied to memory. Smelling peppermint can increase alertness and memory recall.",
+        "Fun Fact: Writing things down by hand improves memory retention far better than typing.",
+        "Fun Fact: Your brain generates enough electricity to power a small LED light bulb.",
+        "Fun Fact: The Zeigarnik effect states that people remember uncompleted or interrupted tasks better than completed ones.",
+        "Fun Fact: Mild background noise, like the hum of a coffee shop, has been shown to boost creativity.",
+        "Fun Fact: Taking a short nap (20-30 minutes) can significantly improve alertness and motor learning.",
+        "Fun Fact: Visualizing yourself succeeding at a task can actually improve your physical performance of it.",
+        "Fun Fact: Procrastination is often an emotional regulation problem, not a time management problem.",
+        "Fun Fact: Reading out loud has been shown to improve memory retention of the material.",
+        "Fun Fact: Information studied right before you go to sleep is retained much better than during the day.",
+        "Fun Fact: The color blue has been shown to enhance creativity, while red enhances attention to detail."
       ];
       const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
       
